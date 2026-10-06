@@ -25,13 +25,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun VeyraApp(vm:VeyraViewModel,shared:String?,image:Uri?,shortcut:String?,capture:Boolean,openId:String?,notificationPermission:()->Unit){
+@Composable fun VeyraApp(vm:VeyraViewModel,shared:String?,image:Uri?,shortcut:String?,capture:Boolean,openId:String?,notificationPermission:()->Unit,openUpdates:Boolean=false){
     val all by vm.items.collectAsState();val items=all.filter{it.deletedAt==0L}
     var page by rememberSaveable{mutableStateOf("Hoje")};var module by rememberSaveable{mutableStateOf("hub")};var query by rememberSaveable{mutableStateOf("")}
     var searching by rememberSaveable{mutableStateOf(false)}
     var editor by remember{mutableStateOf<Item?>(if(shared!=null)Item(type="note",title="",notes=shared)else if(shortcut!=null || capture)Item(type=shortcut ?: "note",title="")else null)}
     var detail by remember{mutableStateOf<Item?>(null)};var deleting by remember{mutableStateOf<Item?>(null)}
-    var showSettings by remember{mutableStateOf(false)};var trash by remember{mutableStateOf(false)}
+    var showSettings by remember{mutableStateOf(openUpdates)};var trash by remember{mutableStateOf(false)}
     val snackbar=remember{SnackbarHostState()}
     LaunchedEffect(image){image?.let{vm.scan(it)}}
     LaunchedEffect(openId,all){if(openId!=null && detail==null)detail=all.firstOrNull{it.id==openId}}
@@ -44,9 +44,10 @@ import androidx.compose.ui.unit.sp
     BackHandler(enabled=page!="Hoje" || searching){if(searching){searching=false;query=""}else if(page=="Mais" && module!="hub"){module="hub";trash=false}else page="Hoje"}
     Scaffold(snackbarHost={SnackbarHost(snackbar)},topBar={TopAppBar(title={Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){Box(Modifier.size(30.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),contentAlignment=Alignment.Center){Text("v",color=MaterialTheme.colorScheme.onPrimary,fontWeight=FontWeight.ExtraBold,fontSize=23.sp)};Text("veyra",fontWeight=FontWeight.ExtraBold,letterSpacing=(-1).sp,fontSize=24.sp)}},colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background),actions={IconButton(onClick={searching=!searching;query=""}){Icon(Icons.Default.Search,"Buscar")};IconButton(onClick={showSettings=true}){Icon(Icons.Default.Tune,"Configurações")}})},
         bottomBar={NavigationBar(containerColor=MaterialTheme.colorScheme.background,tonalElevation=0.dp){tabs.forEachIndexed{n,label->NavigationBarItem(selected=page==label,onClick={page=label;if(label=="Mais")module="hub";query="";searching=false;trash=false},icon={Icon(icons[n],null)},label={Text(label)},colors=NavigationBarItemDefaults.colors(indicatorColor=MaterialTheme.colorScheme.primaryContainer))}}},
-        floatingActionButton={if(page in setOf("Hoje","Agenda") || page=="Mais" && module !in setOf("city","tools","assistant","hub","task","focus","routine"))FloatingActionButton(modifier=Modifier.semantics{contentDescription="Capturar"},containerColor=MaterialTheme.colorScheme.primary,onClick={create(when(page){"Agenda"->"task";"Mais"->module.takeUnless{it in listOf("favorites","timeline")} ?: "note";else->"task"})}){Icon(Icons.Default.Add,null)}}
+        floatingActionButton={if(page in setOf("Hoje","Agenda") || page=="Mais" && module !in setOf("city","tools","assistant","hub","task","focus","routine","sketch","scanner","decisions","playroom","worldclock"))FloatingActionButton(modifier=Modifier.semantics{contentDescription="Capturar"},containerColor=MaterialTheme.colorScheme.primary,onClick={create(when(page){"Agenda"->"task";"Mais"->module.takeUnless{it in listOf("favorites","timeline")} ?: "note";else->"task"})}){Icon(Icons.Default.Add,null)}}
     ){padding->
         Column(Modifier.fillMaxSize().padding(padding)){
+            if(vm.updateRelease!=null)TextButton(onClick={showSettings=true},modifier=Modifier.fillMaxWidth()){Text("Veyra ${vm.updateRelease?.version} disponível • Ver atualização")}
             if(vm.busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             if(searching)OutlinedTextField(query,{query=it},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=8.dp),label={Text("Buscar em toda sua vida")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
             if(query.isNotBlank())ItemList(items.filter{Workspace.matches(it,query)},{detail=it},{editor=it},{deleting=it},vm)
@@ -58,7 +59,7 @@ import androidx.compose.ui.unit.sp
                 "Mais"->{if(module=="hub")ModuleHub(vm,{module=it})else{
                     Row(Modifier.padding(horizontal=20.dp)){TextButton(onClick={module="hub"}){Text("← Todos os módulos")};TextButton(onClick={trash=!trash}){Text(if(trash)"Sair da lixeira"else "Lixeira")}}
                     if(trash)ItemList(all.filter{it.deletedAt!=0L},{vm.save(it.copy(deletedAt=0))},{vm.save(it.copy(deletedAt=0))},{},vm)
-                    else when{module=="routine"->RoutineStudio(items,vm,{detail=it},::navigate);module in ExtraCatalog.specs.map{it.type}->ExtraStudio(module,items,vm,{detail=it},{editor=it},{deleting=it},{create(it)});else->when(module){"city"->WeatherScreen(items,vm);"task"->TasksStudio(items,vm,{detail=it},{create(it)});"tools"->ToolsScreen();"assistant"->AssistantScreen(vm);else->ModuleScreen(module,items,vm,{detail=it},{editor=it},{deleting=it},{create(it)})}}
+                    else when{module=="routine"->RoutineStudio(items,vm,{detail=it},::navigate);module in ExtraCatalog.specs.map{it.type}->ExtraStudio(module,items,vm,{detail=it},{editor=it},{deleting=it},{create(it)});else->when(module){"sketch"->SketchStudio(items,vm,{detail=it});"scanner"->ScannerStudio(vm);"decisions"->DecisionStudio(vm);"playroom"->GamesStudio();"worldclock"->WorldClockStudio(vm);"city"->WeatherScreen(items,vm);"task"->TasksStudio(items,vm,{detail=it},{create(it)});"tools"->ToolsScreen();"assistant"->AssistantScreen(vm);else->ModuleScreen(module,items,vm,{detail=it},{editor=it},{deleting=it},{create(it)})}}
                 }}
             }
         }

@@ -65,7 +65,7 @@ class WorkspaceStore(context:Context,name:String="veyra.db"):AutoCloseable {
         val prefs=if(version==2 && root.has("preferences")) jsonMap(root.getJSONObject("preferences")) else emptyMap()
         db.runInTransaction {
             items.forEach(::save)
-            prefs.filterKeys{it in setOf("name","theme","profile","home","hidden","favoriteModules","focusMinutes","breakMinutes","weatherConsent","weatherMode","weatherCity","weatherTemperature","weatherCondition","aiEndpoint","aiModel")}.forEach{(k,v)->preference(k,v)}
+            prefs.filterKeys{it in setOf("name","theme","profile","home","hidden","favoriteModules","focusMinutes","breakMinutes","weatherConsent","weatherMode","weatherCity","weatherTemperature","weatherCondition","aiEndpoint","aiModel","autoUpdateCheck","autoUpdateDownload","clockZones")}.forEach{(k,v)->preference(k,v)}
         }
     }
     companion object {

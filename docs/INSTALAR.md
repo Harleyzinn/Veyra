@@ -1,8 +1,8 @@
-# Veyra Life 1.1
+# Veyra Life 1.2
 
 ## Instalar no celular
 
-1. Envie `Veyra-1.1.0.apk` ao celular pelo cabo, Drive ou outro meio que você já use.
+1. Envie `Veyra-1.2.0.apk` ao celular pelo cabo, Drive ou outro meio que você já use.
 2. Abra o arquivo no Android e autorize a instalação de apps pela origem que você usou, quando o sistema solicitar.
 3. Toque em **Instalar**, abra **Veyra** e escolha seu nome, perfil e tema.
 
@@ -30,3 +30,4 @@ O painel de cartões mostra compras por mês, limite, fechamento e vencimento in
 Os exemplos das capturas de tela são dados do emulador de teste. O APK começa com seus registros vazios.
 
 Na versão 1.1, abra **Mais → Abrir central de rotina** para os novos módulos. Instale por cima da 1.0 para manter seus registros; faça um backup antes da atualização.
+Na versão 1.2, abra Configurações → Atualizações. As próximas versões serão consultadas automaticamente; o Android pede confirmação para instalar. Os novos módulos estão em Mais. Veja RELEASE-1.2.md e PLAY-PROTECT.md.

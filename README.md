@@ -4,7 +4,11 @@ Sua vida, em um só lugar. App Android nativo em Kotlin/Jetpack Compose, criado 
 
 ## APK e instalação
 
-O APK release assinado fica em `dist/Veyra-1.1.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`, independente do original. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-1.2.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`, independente do original. Veja [como instalar e usar](docs/INSTALAR.md).
+
+## Novidades da versão 1.2
+
+Atualizador via GitHub com download automático em rede sem cobrança por uso, validação de assinatura/hash e confirmação pelo Android. Desenho e galeria PNG, leitor de códigos em imagens, sorteios/equipes/dados, três jogos offline e relógio mundial. Veja [detalhes](docs/RELEASE-1.2.md) e [Play Protect](docs/PLAY-PROTECT.md).
 
 ## Novidades da versão 1.1
 
@@ -33,6 +37,8 @@ JDK 17, SDK 35 e Build Tools 35.0.0. Configure `JAVA_HOME` e `ANDROID_HOME`, ou 
 ./gradlew.bat :core:model:test :feature:finance:test :app:lintDebug :app:assembleDebug
 ./gradlew.bat :core:data:connectedDebugAndroidTest :app:connectedDebugAndroidTest
 ./scripts/build-apk.ps1
+# Depois de commit e push, publicar o APK com a mesma chave:
+./scripts/publish-release.ps1
 ```
 
 O script gera a chave local na pasta privada e ignorada `.signing`, alinha o APK para páginas de 16 KB, assina e verifica o resultado. Preserve a chave e a senha para futuras atualizações. O projeto não inclui credenciais ou chaves no Git/ZIP.

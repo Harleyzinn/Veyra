@@ -26,7 +26,7 @@ fun evaluateRules(store:WorkspaceStore){
 object AndroidJobs {
     const val CHANNEL="veyra-reminders"
     fun channels(context:Context){val manager=context.getSystemService(NotificationManager::class.java);manager.createNotificationChannel(NotificationChannel(CHANNEL,"Lembretes Veyra",NotificationManager.IMPORTANCE_DEFAULT));manager.createNotificationChannel(NotificationChannel("veyra-focus","Sessões de foco",NotificationManager.IMPORTANCE_LOW))}
-    fun install(context:Context){channels(context);WorkManager.getInstance(context).enqueueUniquePeriodicWork("veyra-maintenance",ExistingPeriodicWorkPolicy.KEEP,PeriodicWorkRequestBuilder<MaintenanceWorker>(1,TimeUnit.HOURS).build())}
+    fun install(context:Context){channels(context);WorkManager.getInstance(context).enqueueUniquePeriodicWork("veyra-maintenance",ExistingPeriodicWorkPolicy.KEEP,PeriodicWorkRequestBuilder<MaintenanceWorker>(1,TimeUnit.HOURS).build());WorkManager.getInstance(context).enqueueUniquePeriodicWork("veyra-updates",ExistingPeriodicWorkPolicy.KEEP,PeriodicWorkRequestBuilder<UpdateWorker>(24,TimeUnit.HOURS).setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build())}
     fun schedule(context:Context,item:Item){cancel(context,item.id);if(item.done || item.deletedAt!=0L || item.value("reminder").isBlank() || item.date.isBlank())return
         val at=LocalDate.parse(item.date).atTime(LocalTime.parse(item.value("reminder"))).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         if(at<=System.currentTimeMillis())return

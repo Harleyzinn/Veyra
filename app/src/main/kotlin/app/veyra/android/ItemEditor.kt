@@ -22,7 +22,7 @@ import androidx.compose.ui.window.DialogProperties
             Text(if(initial.title.isBlank())"NOVO REGISTRO"else "SEU REGISTRO",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
             Text(if(initial.title.isBlank())"Tire a ideia do papel."else "Ajuste os detalhes.",style=MaterialTheme.typography.headlineSmall,modifier=Modifier.padding(top=6.dp,bottom=14.dp))
             LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)){
-                item{Choice("Tipo",Registry.specs.filter{it.type !in listOf("city","tools","assistant","routine")}.map{it.type},type,{type=it}){Registry.spec(it).label}}
+                item{Choice("Tipo",Registry.specs.filter{it.type !in listOf("city","tools","assistant","routine","sketch","scanner","decisions","playroom","worldclock")}.map{it.type},type,{type=it}){Registry.spec(it).label}}
                 item{OutlinedTextField(title,{title=it},label={Text("Título")},modifier=Modifier.fillMaxWidth(),singleLine=true)}
                 item{OutlinedTextField(date,{date=it},label={Text("Data • AAAA-MM-DD, ou vazia")},modifier=Modifier.fillMaxWidth(),singleLine=true)}
                 item{OutlinedTextField(notes,{notes=it},label={Text(if(type=="flashcard")"Dicas / explicação"else "Texto / detalhes • Markdown")},modifier=Modifier.fillMaxWidth(),minLines=3,maxLines=8)}

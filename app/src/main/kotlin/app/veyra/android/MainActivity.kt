@@ -31,7 +31,7 @@ class MainActivity:FragmentActivity(){
             SideEffect{WindowCompat.getInsetsController(window,window.decorView).apply{isAppearanceLightStatusBars=lightBars;isAppearanceLightNavigationBars=lightBars}}
             if(!vm.loaded)Box(Modifier.fillMaxSize().padding(48.dp)){CircularProgressIndicator()}
             else if(vm.preferences["lock"].orEmpty().isNotBlank() && !unlocked) LockScreen(vm.preferences.getValue("lock"),{unlocked=true},::biometric)
-            else VeyraApp(vm,shared,image,intent.getStringExtra("type"),intent.getBooleanExtra("capture",false),intent.getStringExtra("item"),{if(android.os.Build.VERSION.SDK_INT>=33)permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)})
+            else VeyraApp(vm,shared,image,intent.getStringExtra("type"),intent.getBooleanExtra("capture",false),intent.getStringExtra("item"),{if(android.os.Build.VERSION.SDK_INT>=33)permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)},openUpdates=intent.getBooleanExtra("updates",false))
         }}
     }
 }

@@ -30,7 +30,32 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
     var ocrDraft by mutableStateOf<Item?>(null)
     var assistantReply by mutableStateOf("");internal set
     var sessionKey by mutableStateOf("")
-    init {operation{};AndroidJobs.install(app)}
+    var updateRelease by mutableStateOf<AppRelease?>(null);private set
+    var updateBusy by mutableStateOf(false);private set
+    var updateProgress by mutableFloatStateOf(0f);private set
+    var updateStatus by mutableStateOf("");private set
+    var updateFile by mutableStateOf<java.io.File?>(null);private set
+    init {operation{};AndroidJobs.install(app);checkUpdates(true)}
+    fun checkUpdates(automatic:Boolean=false){if(updateBusy)return;viewModelScope.launch{
+        updateBusy=true
+        if(!automatic)updateStatus="Consultando a release oficial…"
+        try{
+            val result=withContext(Dispatchers.IO){
+                val prefs=store.preferences();val previous=prefs["updateCheckedAt"]?.toLongOrNull() ?: 0
+                if(automatic && (prefs["autoUpdateCheck"]=="Não" || System.currentTimeMillis()-previous<24*60*60*1000L))return@withContext null to false
+                val release=GitHubUpdater.latest(getApplication());store.preference("updateCheckedAt",System.currentTimeMillis().toString());release to true
+            }
+            if(result.second){if(updateRelease?.tag!=result.first?.tag)updateFile=null;updateRelease=result.first;updateFile=result.first?.let{release->withContext(Dispatchers.IO){GitHubUpdater.cached(getApplication(),release)}};updateStatus=if(result.first==null)"Você está na versão mais recente disponível."else if(updateFile!=null)"Download, hash e assinatura conferidos. Confirme no Android."else "Uma nova versão está disponível."}
+        }catch(e:Exception){if(!automatic)updateStatus=e.message ?: "Não foi possível consultar agora."}finally{updateBusy=false}
+    }}
+    fun downloadUpdate(){val release=updateRelease ?: return;if(updateBusy)return;viewModelScope.launch{
+        updateBusy=true;updateProgress=0f;updateStatus="Baixando atualização…"
+        try{updateFile=withContext(Dispatchers.IO){GitHubUpdater.download(getApplication(),release){value->updateProgress=value}};updateStatus="Hash e assinatura conferidos. Confirme a instalação no Android."}
+        catch(e:Exception){updateFile=null;updateStatus=e.message ?: "O download falhou."}finally{updateBusy=false}
+    }}
+    fun installUpdate(){val release=updateRelease ?: return;val file=updateFile ?: return
+        try{GitHubUpdater.install(getApplication(),file,release.version)}catch(e:Exception){updateStatus=e.message ?: "Não foi possível abrir o instalador."}
+    }
     fun operation(action:suspend ()->Unit) {viewModelScope.launch {mutex.withLock{
         busy=true
         try {val snapshot=withContext(Dispatchers.IO){action();store.all() to store.preferences()};state.value=snapshot.first;preferences=snapshot.second;loaded=true}

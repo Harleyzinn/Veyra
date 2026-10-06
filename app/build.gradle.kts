@@ -1,7 +1,7 @@
 plugins { id("com.android.application"); kotlin("android"); id("org.jetbrains.kotlin.plugin.compose") }
 android {
     namespace = "app.veyra.android"; compileSdk = 35
-    defaultConfig { applicationId = "app.veyra.life"; minSdk = 26; targetSdk = 35; versionCode = 110; versionName = "1.1.0"; testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "app.veyra.life"; minSdk = 26; targetSdk = 35; versionCode = 120; versionName = "1.2.0"; testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true }
     buildTypes { getByName("release") { isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro") } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

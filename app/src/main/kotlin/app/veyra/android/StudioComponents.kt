@@ -27,6 +27,7 @@ import java.util.Locale
 val Brazilian:Locale=Locale.forLanguageTag("pt-BR")
 fun dateLabel(date:String)=runCatching{LocalDate.parse(date).format(DateTimeFormatter.ofPattern("dd MMM",Brazilian))}.getOrDefault("Sem data")
 fun moduleIcon(type:String):ImageVector=when(type){
+    "sketch"->Icons.Default.Brush;"scanner"->Icons.Default.QrCodeScanner;"decisions"->Icons.Default.Casino;"playroom"->Icons.Default.SportsEsports;"worldclock"->Icons.Default.Public
     "routine"->Icons.Default.DashboardCustomize;"checklist","chore"->Icons.Default.Checklist;"meal"->Icons.Default.Restaurant;"pet"->Icons.Default.Pets;"medicine"->Icons.Default.Medication;"appointment"->Icons.Default.LocalHospital;"mood"->Icons.Default.Mood;"measurement"->Icons.Default.MonitorWeight;"exercise"->Icons.Default.FitnessCenter;"countdown"->Icons.Default.HourglassBottom;"savings_goal"->Icons.Default.Savings;"debt","bill"->Icons.Default.ReceiptLong;"wishlist","gift"->Icons.Default.CardGiftcard;"course"->Icons.Default.School;"job"->Icons.Default.WorkOutline;"subscription_audit"->Icons.Default.ManageSearch
     "task"->Icons.Default.CheckCircleOutline;"event","plan"->Icons.Default.CalendarMonth;"project"->Icons.Default.FolderOpen;"goal"->Icons.Default.Flag
     "income"->Icons.Default.SouthWest;"expense"->Icons.Default.NorthEast;"account"->Icons.Default.AccountBalanceWallet;"card"->Icons.Default.CreditCard
