@@ -19,6 +19,7 @@ enum class SyncStatus(val label: String) {
 
 data class CloudState(
     val configured: Boolean = false,
+    val cloudAttachmentsEnabled: Boolean = false,
     val user: CloudUser? = null,
     val status: SyncStatus = SyncStatus.LOCAL,
     val busy: Boolean = false,

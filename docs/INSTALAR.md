@@ -1,9 +1,9 @@
-# Veyra Life 2.0
+# Veyra Life 2.0.1
 
 ## Instalar no celular
 
 1. Faça um backup nas Configurações do Veyra, caso já use uma versão anterior.
-2. Baixe `Veyra-2.0.0.apk` da release oficial e envie ao celular pelo cabo ou outro meio que você já use.
+2. Baixe `Veyra-2.0.1.apk` da release oficial e envie ao celular pelo cabo ou outro meio que você já use.
 3. Abra o arquivo no Android e autorize a instalação pela origem escolhida quando o sistema solicitar.
 4. Toque em **Instalar**. A chave original permite atualizar por cima das versões anteriores de `app.veyra.life`. Na primeira instalação, escolha nome, perfil e tema.
 
@@ -22,7 +22,7 @@ Requer Android 8.0 ou superior. O pacote é `app.veyra.life`: esta versão pode 
 
 ## Dados e cuidados práticos
 
-Os dados ficam no aparelho. Firebase está implementado e requer [configuração do projeto e novo build](FIREBASE-SETUP.md); este APK não tem um projeto Firebase configurado. Exporte um backup JSON antes de desinstalar ou trocar de celular. A senha opcional protege o arquivo com AES-GCM; o banco local não possui criptografia adicional. PIN e autenticação do Android protegem a interface. O banco convidado original é preservado e separado dos bancos por conta.
+Os dados ficam no aparelho. Firebase está implementado e requer [configuração do projeto e novo build](FIREBASE-SETUP.md); o APK 2.0.1 já está conectado ao projeto real, com login e sincronização de registros no plano gratuito. Anexos ficam no celular original e exigem backup completo para serem transferidos. Exporte um backup JSON antes de desinstalar ou trocar de celular. A senha opcional protege o arquivo com AES-GCM; o banco local não possui criptografia adicional. PIN e autenticação do Android protegem a interface. O banco convidado original é preservado e separado dos bancos por conta.
 
 A exportação da tela Finanças é um relatório com 15 colunas, incluindo transferências, contas, cartões, status, vencimento, competência, tags e notas. Respeita os filtros de movimentações e não substitui o backup JSON. A importação de extratos nas Configurações aceita CSV do relatório e `date,title,amount,category`, datas `AAAA-MM-DD`, valor negativo para despesa. Há importação OFX com prévia e exportação PDF.
 

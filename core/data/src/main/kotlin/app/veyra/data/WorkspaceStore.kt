@@ -291,6 +291,9 @@ class WorkspaceStore(context:Context,val databaseName:String=WorkspaceIdentity.d
         require(uid!=null){"O espaço local não pode ser removido como cache de nuvem"}
         db.runInTransaction {
             require(pendingSyncCount()==0 && conflicts().isEmpty()){ "Sincronize e resolva os conflitos antes de limpar o cache" }
+            require(all().none{it.value("attachment").isNotBlank() && it.value("cloudAttachmentPath").isBlank()}){
+                "Há anexos salvos somente neste aparelho. O cache foi preservado para proteger seus arquivos."
+            }
             listOf("items","item_summaries","item_search","finance_index","item_metadata","sync_cursors","audit_events").forEach{db.openHelper.writableDatabase.execSQL("DELETE FROM $it")}
         }
     }
@@ -351,6 +354,8 @@ class WorkspaceStore(context:Context,val databaseName:String=WorkspaceIdentity.d
         fun itemWithoutBinary(item:Item):Item = if(item.value("attachment").isBlank())item else item.copy(fields=item.fields-"attachment"+mapOf("hasAttachment" to "yes"))
         private fun preserveBinaryWhenSameAttachment(local:Item?,remote:Item):Item {
             if(local==null || local.value("attachment").isBlank() || remote.value("attachment").isNotBlank())return remote
+            if(remote.value("attachmentLocalOnly")=="yes" && remote.value("purged")!="yes")return remote.copy(fields=remote.fields+
+                local.fields.filterKeys{it in setOf("attachment","attachmentHash","mime","fileName","attachmentName")}+("hasAttachment" to "yes"))
             val remoteHash=remote.value("attachmentHash")
             return if(remoteHash.isNotBlank() && remoteHash==local.value("attachmentHash"))remote.copy(fields=remote.fields+("attachment" to local.value("attachment")))else remote
         }

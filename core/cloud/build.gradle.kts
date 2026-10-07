@@ -7,6 +7,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", rootProject.file("app/google-services.json").isFile.toString())
         buildConfigField("boolean", "APP_CHECK_DEBUG", (providers.gradleProperty("veyraAppCheckDebug").orNull == "true").toString())
+        buildConfigField("boolean", "CLOUD_ATTACHMENTS_ENABLED", (providers.gradleProperty("veyraCloudAttachments").orNull == "true").toString())
     }
     buildFeatures { buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

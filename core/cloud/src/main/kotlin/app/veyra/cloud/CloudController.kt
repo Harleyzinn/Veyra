@@ -36,7 +36,7 @@ class CloudController(
     private val accountMutex = Mutex()
     private var debounce: Job? = null
     private var scopeChangeJob: Job? = null
-    private val mutableState = MutableStateFlow(CloudState(configured = runtime != null))
+    private val mutableState = MutableStateFlow(CloudState(configured = runtime != null, cloudAttachmentsEnabled = BuildConfig.CLOUD_ATTACHMENTS_ENABLED))
     val state = mutableState.asStateFlow()
     private val connectivity = this.context.getSystemService(ConnectivityManager::class.java)
     private val networkListener = object : ConnectivityManager.NetworkCallback() {
@@ -73,7 +73,7 @@ class CloudController(
                 scopeChangeJob = onScopeChanged()
             }
             if (runtime?.auth?.currentUser?.uid != uid) return@withLock
-            mutableState.value = CloudState(configured = runtime != null, busy = state.value.busy, user = user?.let {
+            mutableState.value = CloudState(configured = runtime != null, cloudAttachmentsEnabled = BuildConfig.CLOUD_ATTACHMENTS_ENABLED, busy = state.value.busy, user = user?.let {
                 CloudUser(it.uid, it.displayName.orEmpty(), it.email.orEmpty(), it.photoUrl?.toString().orEmpty(),
                     it.isEmailVerified, it.metadata?.creationTimestamp ?: 0, it.metadata?.lastSignInTimestamp ?: 0,
                     it.providerData.any { provider -> provider.providerId == "password" })

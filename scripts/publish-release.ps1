@@ -32,11 +32,12 @@ try {
     $files=@($apkPath,$zipPath,'dist/SHA256SUMS.txt')
     $apkHash=(Get-FileHash $apkPath -Algorithm SHA256).Hash.ToLower()
     $minor=$Version -replace '\.\d+$',''
-    $notesPath="docs/RELEASE-$minor.md"
+    $notesPath=if(Test-Path "docs/RELEASE-$Version.md"){"docs/RELEASE-$Version.md"}else{"docs/RELEASE-$minor.md"}
     $body=if(Test-Path -LiteralPath $notesPath){[IO.File]::ReadAllText((Join-Path $projectRoot $notesPath))}else{"Veyra Life $Version"}
     $body=$body.Replace('(PLAY-PROTECT.md)',"(https://github.com/$repo/blob/$commit/docs/PLAY-PROTECT.md)")
     $body+="`n`n## Download e integridade`n`nBaixe **Veyra-$Version.apk** abaixo. Android 8.0 ou superior. APK release assinado com a chave original; faça backup antes de atualizar.`n`nSHA-256: ``$apkHash``.`n`nO ZIP contém o código-fonte. Chaves, senhas e dados de teste não estão incluídos."
-    if(Test-Path 'docs/FIREBASE-SETUP.md'){$body+="`n`n[Configuração Firebase](https://github.com/$repo/blob/$commit/docs/FIREBASE-SETUP.md) · [Guia financeiro](https://github.com/$repo/blob/$commit/docs/FINANCE-GUIDE.md) · [Testes e migração](https://github.com/$repo/blob/$commit/docs/VALIDATION-$minor.md)"}
+    $validationVersion=if(Test-Path "docs/VALIDATION-$Version.md"){$Version}else{$minor}
+    if(Test-Path 'docs/FIREBASE-SETUP.md'){$body+="`n`n[Configuração Firebase](https://github.com/$repo/blob/$commit/docs/FIREBASE-SETUP.md) · [Guia financeiro](https://github.com/$repo/blob/$commit/docs/FINANCE-GUIDE.md) · [Testes e migração](https://github.com/$repo/blob/$commit/docs/VALIDATION-$validationVersion.md)"}
     $stage='autenticação'
     # Capture Git's credential manager output without logging or writing credentials.
     $credentialLines="protocol=https`nhost=github.com`n`n" | git credential fill 2>$null

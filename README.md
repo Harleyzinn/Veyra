@@ -4,13 +4,13 @@ Sua vida, em um só lugar. App Android nativo em Kotlin/Jetpack Compose, criado 
 
 ## APK e instalação
 
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.0.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.0.1.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
 
 ## Novidades da versão 2.0
 
 Central financeira com captura rápida e modo avançado, dinheiro em unidades mínimas exatas, saldo realizado separado da previsão, recorrências com exceções e escopos de edição, faturas por fechamento, parcelas, transferências, contas a pagar/receber, orçamentos, metas, reserva, quitação de dívidas, patrimônio, relatórios CSV/PDF, gráficos interativos, histórico e lixeira. Os demais módulos permanecem disponíveis.
 
-Novo módulo `core:cloud` com Firebase Auth, login Google, Firestore, Storage privado, App Check, sincronização com revisões, fila offline e conflitos preservados. O app funciona localmente sem configuração Firebase. Para ativar a nuvem, crie seu projeto e siga o [setup exato](docs/FIREBASE-SETUP.md). Não há projeto de produção ou credenciais incluídos no código/APK desta entrega. Leia os [detalhes da versão](docs/RELEASE-2.0.md), [guia financeiro](docs/FINANCE-GUIDE.md) e [validação](docs/VALIDATION-2.0.md).
+Na versão 2.0.1, Firebase Auth por e-mail e Google e Firestore estão conectados ao projeto real do Veyra. Plano gratuito sem cobrança, regras privadas implantadas e App Check registrado. Registros sincronizam com fila offline e conflitos; anexos permanecem no aparelho original. A configuração administrativa e os testes no Firebase real foram concluídos; Google Login e Play Integrity ainda precisam de validação no celular. Leia o [setup](docs/FIREBASE-SETUP.md), [detalhes da atualização](docs/RELEASE-2.0.1.md), [guia financeiro](docs/FINANCE-GUIDE.md) e [validação](docs/VALIDATION-2.0.1.md).
 
 ## Novidades da versão 1.2
 
@@ -33,7 +33,7 @@ Atualizador via GitHub com download automático em rede sem cobrança por uso, v
 - Busca global, favoritos, lixeira, desfazer, widget, atalhos, notificações, backup JSON e bloqueio PIN/biometria.
 - Temas claro/escuro/AMOLED/sistema/dinâmico, fonte Manrope embarcada e identidade violeta/grafite.
 
-Os registros começam vazios no APK. Exemplos dos testes e capturas não entram na instalação. Não há conexão bancária, câmbio automático ou cotação de investimentos; valores são informados pelo usuário. Firebase requer configuração do proprietário e novo build. As limitações de autenticação, App Check e distribuição estão no guia de setup.
+Os registros começam vazios no APK. Exemplos dos testes e capturas não entram na instalação. Não há conexão bancária, câmbio automático ou cotação de investimentos; valores são informados pelo usuário. O APK 2.0.1 já inclui a configuração Firebase real; builds do código-fonte precisam do arquivo local ignorado pelo Git. As limitações de autenticação, App Check e distribuição estão no guia de setup.
 
 ## Compilar
 

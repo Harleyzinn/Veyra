@@ -46,6 +46,8 @@ As consultas usam páginas de 100 documentos e até três páginas por coleção
 
 ## Anexos e backups
 
+Por padrão, `veyraCloudAttachments` é falso. O APK 2.0.1 usa o projeto gratuito real sem Storage. `LocalAttachmentPolicy` remove binários somente da cópia enviada, marca `attachmentLocalOnly` e não altera o original. Room mantém o arquivo local ao aplicar edições remotas dessa modalidade. A limpeza de cache exige que nenhum arquivo local ficaria sem cópia na nuvem. Para um projeto com Storage efetivamente provisionado, use `-PveyraCloudAttachments=true` ao gerar a atualização; não ative a flag antes de provisionar bucket e regras. Registros com referências Storage existentes são rejeitados no modo gratuito para evitar perder arquivos silenciosamente.
+
 Comprovantes ficam em `users/{uid}/receipts/{sha256}`, demais anexos em `attachments` e o caminho controlado para imagens de perfil em `profile`. O upload usa caminho por hash, tamanho máximo de 10 MB, MIME permitido e metadados de proprietário/integridade. O documento contém a referência privada e o hash; nenhum Base64 é enviado ao Firestore. O download verifica o UID do caminho e o SHA-256 dos bytes. Não são usados links públicos de download.
 
 O backup JSON preserva IDs, conteúdo e preferências permitidas. Ele baixa e incorpora os anexos remotos antes de exportar um arquivo portátil, remove referências vinculadas ao UID anterior e permite proteção opcional com senha por AES-GCM. A exportação falha com erro real se um anexo não puder ser obtido; não anuncia sucesso de um arquivo incompleto. O tamanho máximo de exportação é 30 MB. O importador limita a entrada a 40 MB, valida o esquema e aplica o lote em uma transação local. Senhas de Firebase, tokens, PIN e chaves de API não fazem parte do backup.
@@ -58,7 +60,7 @@ A importação do espaço visitante é uma ação explícita disponível após a
 
 Excluir normalmente produz tombstones `deletedAt`, que sincronizam e permitem restauração na lixeira. A exclusão definitiva de um registro limpa seu conteúdo sensível e mantém o marcador de exclusão, impedindo reaparecimento em aparelhos antigos. A auditoria local segue as políticas do espaço local e não é apresentada como eliminação total de conta.
 
-Excluir a conta exige reautenticação real. O perfil é bloqueado contra novas gravações, arquivos privados e subcoleções são removidos, fica um marcador mínimo de UID excluído e, então, Firebase Auth exclui o usuário. O cache local dessa conta é removido; o visitante e outras contas não são removidos. Uma falha intermediária informa erro e permite retomar a operação. A política TTL opcional remove o marcador mínimo depois do intervalo de proteção. Essa operação depende de um Storage configurado e acessível, como detalhado em [FIREBASE-SETUP.md](FIREBASE-SETUP.md).
+Excluir a conta exige reautenticação real. O perfil é bloqueado contra novas gravações, arquivos privados e subcoleções são removidos, fica um marcador mínimo de UID excluído e, então, Firebase Auth exclui o usuário. O cache local dessa conta é removido; o visitante e outras contas não são removidos. Uma falha intermediária informa erro e permite retomar a operação. A política TTL opcional remove o marcador mínimo depois do intervalo de proteção. No modo com anexos na nuvem, depende de Storage configurado e acessível. No modo gratuito, não chama Storage, pois este projeto nunca armazenou arquivos lá.
 
 ## Validação e limites desta entrega
 

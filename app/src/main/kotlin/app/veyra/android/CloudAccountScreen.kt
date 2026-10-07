@@ -66,6 +66,11 @@ fun CloudAccountScreen(controller: CloudController, onBack: () -> Unit = {}) {
         if (state.busy || state.status == SyncStatus.SYNCING) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         state.error?.let { error -> item { CloudCard("Não foi possível concluir") { Text(error, color = MaterialTheme.colorScheme.error) } } }
         if (state.message.isNotBlank()) item { Text(state.message, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
+        if (state.configured && !state.cloudAttachmentsEnabled) item {
+            CloudCard("Nuvem no plano gratuito") {
+                Text("Login e registros são sincronizados. Fotos, PDFs e outros anexos ficam somente no aparelho onde foram adicionados. Exporte um backup completo antes de limpar o cache ou trocar de celular.")
+            }
+        }
         if (!state.configured) item {
             CloudCard("Firebase aguardando configuração") {
                 Text("Este APK funciona localmente. Login e sincronização serão ativados após adicionar a configuração real do seu projeto Firebase e gerar o APK novamente.")

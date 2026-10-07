@@ -10,6 +10,23 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 class WorkspacePersistenceTest {
     private val context get()=InstrumentationRegistry.getInstrumentation().targetContext
+    @Test fun freeCloudEditsPreserveLocalFilesAndCacheCannotEraseThem(){
+        val uid="free-${UUID.randomUUID()}";val name=WorkspaceIdentity.databaseForUid(uid);val previous=WorkspaceIdentity.activeUid(context)
+        WorkspaceIdentity.setActiveUid(context,uid)
+        try{WorkspaceStore(context,name).use{store->
+            val original=Item(type="note",title="Arquivo",fields=mapOf("attachment" to "bG9jYWw=","mime" to "application/pdf"))
+            store.save(original)
+            val queued=store.pendingSyncForItem(original.id)!!
+            store.acknowledgeSync(queued.operationId,1,100)
+            val remote=original.copy(title="Editado em outro aparelho",fields=mapOf("attachmentLocalOnly" to "yes","hasAttachment" to "no"))
+            Assert.assertTrue(store.applyRemote(RemoteItem(remote,2,200,"remote-edit")))
+            Assert.assertEquals("Editado em outro aparelho",store.find(original.id)!!.title)
+            Assert.assertEquals("bG9jYWw=",store.find(original.id)!!.value("attachment"))
+            Assert.assertEquals("application/pdf",store.find(original.id)!!.value("mime"))
+            try{store.clearCacheWhenSynced();Assert.fail("Cache apagou um arquivo local")}catch(_:IllegalArgumentException){}
+            Assert.assertEquals("bG9jYWw=",store.find(original.id)!!.value("attachment"))
+        }}finally{context.deleteDatabase(name);WorkspaceIdentity.setActiveUid(context,previous)}
+    }
     @Test fun migrationPreservesOldMoneyAndIdentifiers(){val name="migration-${UUID.randomUUID()}.db";val path=context.getDatabasePath(name);path.parentFile?.mkdirs()
         try{SQLiteDatabase.openOrCreateDatabase(path,null).use{db->
             db.execSQL("CREATE TABLE entries (id TEXT NOT NULL PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, amount INTEGER NOT NULL, date TEXT NOT NULL, done INTEGER NOT NULL, created INTEGER NOT NULL)")

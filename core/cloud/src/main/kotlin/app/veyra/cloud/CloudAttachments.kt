@@ -8,6 +8,7 @@ import java.security.MessageDigest
 
 internal class CloudAttachments(private val runtime: FirebaseRuntime) {
     suspend fun upload(uid: String, item: Item): Item {
+        if (!BuildConfig.CLOUD_ATTACHMENTS_ENABLED) return LocalAttachmentPolicy.forCloud(item)
         val encoded = item.value("attachment")
         if (encoded.isBlank()) {
             require(item.value("hasAttachment") != "yes" || item.value("cloudAttachmentPath").isNotBlank()) {
@@ -50,6 +51,7 @@ internal class CloudAttachments(private val runtime: FirebaseRuntime) {
     }
 
     suspend fun deleteAll(uid: String) {
+        if (!BuildConfig.CLOUD_ATTACHMENTS_ENABLED) return
         suspend fun erase(path: String) {
             var token: String? = null
             do {

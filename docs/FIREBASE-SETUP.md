@@ -1,10 +1,16 @@
 # Configurar a nuvem do Veyra
 
-O aplicativo está preparado para Firebase Authentication, Cloud Firestore, Cloud Storage e App Check. Nenhum projeto de produção foi criado ou implantado nesta entrega: o proprietário informou que ainda não tem um projeto e pediu a preparação. Sem `app/google-services.json`, o APK funciona localmente e a tela Conta informa que a configuração está pendente. Login e sincronização não são simulados.
+O Veyra 2.0.1 está conectado ao projeto real **`veyra-life-harleyzinn`**, criado em 7/10/2026. E-mail/senha e Google estão habilitados; regras e índices do Firestore foram implantados. O banco `(default)` usa Standard/Native, cota gratuita e região multirregional **`nam5`**, selecionada automaticamente pelo CLI durante o primeiro deploy. A localização não pode ser alterada em um banco existente.
+
+O proprietário escolheu manter o plano gratuito: cobrança desativada e nenhum bucket de Storage provisionado. **Anexos ficam no aparelho original; os registros continuam sincronizáveis.** O app preserva o arquivo local ao receber edições de outro aparelho e bloqueia a limpeza de cache se ela apagaria arquivos sem cópia na nuvem. Faça backup completo antes de trocar de celular.
+
+App Check foi registrado com Play Integrity, SHA-256 original, TTL de uma hora e critérios para distribuição fora da Play Store: permite versão não reconhecida pela loja, não exige licença da loja e exige integridade do dispositivo. APIs App Check e Play Integrity habilitadas. A obrigatoriedade deve ser ativada somente depois de validar as métricas em um celular real. Isso não garante aprovação do Play Protect.
+
+O `app/google-services.json` real está somente no ambiente local e no APK gerado; continua ignorado pelo Git. Não há credenciais administrativas no app. As instruções abaixo permitem reproduzir a configuração em outro projeto.
 
 ## 1. Registrar o aplicativo real
 
-No [Console Firebase](https://console.firebase.google.com/), crie seu projeto ou selecione um projeto que você controla. Escolha o ID, a região dos serviços e as opções de cobrança antes de prosseguir; não há um ID de produção predefinido neste repositório. Analytics é opcional e não é usado pelo Veyra.
+No [Console Firebase](https://console.firebase.google.com/project/veyra-life-harleyzinn/overview), use o projeto Veyra existente. Para outro projeto, escolha previamente ID, região e cobrança. Analytics é opcional e não é usado pelo Veyra.
 
 Em Configurações do projeto → Seus aplicativos → Adicionar aplicativo Android, informe:
 
