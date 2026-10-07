@@ -1,6 +1,8 @@
 package app.veyra.android
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -92,14 +94,41 @@ import java.time.YearMonth
     Text("Fecha dia ${card.value("closing")} · vence dia ${card.value("due")}",style=MaterialTheme.typography.bodySmall)
     val accounts=all.filter{it.type=="account" && FinancialDomain.currency(it)==currency && it.deletedAt==0L}
     var paymentAccount by remember(card.id){mutableStateOf(card.value("account").ifBlank{accounts.firstOrNull()?.id.orEmpty()})}
+    var paymentInvoice by remember(card.id){mutableStateOf<CardInvoice?>(null)}
+    var paymentAmount by remember(card.id){mutableStateOf("")}
+    var paymentDate by remember(card.id){mutableStateOf(today.toString())}
     Choice("Pagar pela conta",listOf("")+accounts.map{it.id},paymentAccount,{paymentAccount=it}){id->accounts.firstOrNull{it.id==id}?.title ?: "Selecionar"}
-    val invoices=FinanceEngine.cardInvoices(all,card,today.minusMonths(12),today.plusMonths(2))
+    val invoices=FinanceEngine.cardInvoices(all,card,today.minusMonths(12),today.plusMonths(2)).sortedWith(compareBy<CardInvoice>{if(it.outstandingMinor>0)0 else 1}.thenBy{it.dueDate})
+    var invoiceLimit by remember(card.id){mutableIntStateOf(8)}
     if(invoices.isEmpty())Text("As compras aparecem nas faturas pelo fechamento do cartão.")
-    invoices.take(8).forEach{invoice->
+    invoices.take(invoiceLimit).forEach{invoice->
         HorizontalDivider();Text("Fatura · ${dateLabel(invoice.dueDate.toString())}",style=MaterialTheme.typography.titleMedium)
-        Text("Total ${financeMoney(invoice.totalMinor,currency,hidden)} · em aberto ${financeMoney(invoice.outstandingMinor,currency,hidden)}")
-        if(invoice.outstandingMinor>0)Button(onClick={vm.payInvoice(invoice,paymentAccount)},enabled=paymentAccount.isNotBlank() && !vm.busy){Text("Registrar pagamento da fatura")}
+        Text("Total ${financeMoney(invoice.totalMinor,currency,hidden)} · pago ${financeMoney(invoice.paidMinor,currency,hidden)} · em aberto ${financeMoney(invoice.outstandingMinor,currency,hidden)}")
+        if(invoice.outstandingMinor>0)Button(onClick={paymentInvoice=invoice;paymentAmount=if(hidden)""else FinancialDomain.decimal(invoice.outstandingMinor,currency);paymentDate=today.toString()},enabled=paymentAccount.isNotBlank() && !vm.busy){Text("Registrar pagamento da fatura")}
+        val payments=all.filter{FinancialDomain.active(it) && it.value("paymentType")=="card_payment" && it.value("invoiceId")==invoice.id}.sortedByDescending{it.value("settledDate").ifBlank{it.date}}
+        if(payments.isNotEmpty())FinanceSection("Histórico de pagamentos"){
+            var paymentLimit by remember(invoice.id){mutableIntStateOf(10)}
+            Text("Pagamentos carregados nesta janela. O total pago também inclui o histórico anterior.",style=MaterialTheme.typography.bodySmall)
+            payments.take(paymentLimit).forEach{payment->TextButton(onClick={open(payment)}){Text("${dateLabel(payment.value("settledDate").ifBlank{payment.date})} · ${financeMoney(FinancialDomain.amount(payment),currency,hidden)} · ${accounts.firstOrNull{it.id==payment.value("account")}?.title ?: "Conta"}")}}
+            if(payments.size>paymentLimit)TextButton(onClick={paymentLimit+=10}){Text("Mais pagamentos")}
+        }
         invoice.purchases.filter{it.type=="expense"}.take(5).forEach{TextButton(onClick={open(it)}){Text("${it.title} · ${financeMoney(FinancialDomain.amount(it),currency,hidden)}")}}
+    }
+    if(invoices.size>invoiceLimit)TextButton(onClick={invoiceLimit+=8}){Text("Mais faturas")}
+    paymentInvoice?.let{invoice->
+        val amount=runCatching{FinancialDomain.parseMinor(paymentAmount,currency)}.getOrNull()
+        val date=runCatching{LocalDate.parse(paymentDate)}.getOrNull()
+        val valid=amount!=null && amount in 1..invoice.outstandingMinor && date!=null && !date.isAfter(today)
+        AlertDialog(onDismissRequest={if(!vm.busy)paymentInvoice=null},title={Text("Registrar pagamento")},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
+            Text("Em aberto: ${financeMoney(invoice.outstandingMinor,currency,hidden)}")
+            Text("Você pode registrar uma parte ou quitar o restante. O valor sai da conta escolhida; o gasto da compra não é contado novamente.",style=MaterialTheme.typography.bodySmall)
+            FinanceField("Valor pago",paymentAmount,{paymentAmount=it},true)
+            FinanceField("Data do pagamento • AAAA-MM-DD",paymentDate,{paymentDate=it})
+            if(paymentAmount.isNotBlank() && (amount==null || amount !in 1..invoice.outstandingMinor))Text("Use um valor maior que zero e até o saldo em aberto.",color=MaterialTheme.colorScheme.error)
+            if(date==null || date.isAfter(today))Text("Informe uma data válida de pagamento já realizado.",color=MaterialTheme.colorScheme.error)
+            if(amount!=null && amount in 1..invoice.outstandingMinor)Text("Restará: ${financeMoney(invoice.outstandingMinor-amount,currency,hidden)}")
+            vm.error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+        }},confirmButton={TextButton(onClick={vm.payInvoice(invoice,paymentAccount,paymentAmount,paymentDate){paymentInvoice=null}},enabled=valid && !vm.busy){Text("Confirmar registro")}},dismissButton={TextButton(onClick={paymentInvoice=null},enabled=!vm.busy){Text("Cancelar")}})
     }
 }
 

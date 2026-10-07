@@ -1,9 +1,9 @@
-# Veyra Life 2.0.1
+# Veyra Life 2.1.0
 
 ## Instalar no celular
 
 1. Faça um backup nas Configurações do Veyra, caso já use uma versão anterior.
-2. Baixe `Veyra-2.0.1.apk` da release oficial e envie ao celular pelo cabo ou outro meio que você já use.
+2. Baixe `Veyra-2.1.0.apk` da release oficial e envie ao celular pelo cabo ou outro meio que você já use.
 3. Abra o arquivo no Android e autorize a instalação pela origem escolhida quando o sistema solicitar.
 4. Toque em **Instalar**. A chave original permite atualizar por cima das versões anteriores de `app.veyra.life`. Na primeira instalação, escolha nome, perfil e tema.
 

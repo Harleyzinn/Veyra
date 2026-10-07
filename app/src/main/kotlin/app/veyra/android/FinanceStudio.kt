@@ -22,7 +22,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 internal data class FinanceDashboardData(val summary:FinancialSummary,val projection:CashProjection,val transactions:List<Item>,val obligations:List<Item>,val health:FinancialHealth,val alerts:List<FinancialAlert>,val insights:List<FinancialInsight>)
-private val financeSections=listOf("Resumo","Movimentações","A pagar","A receber","Fluxo futuro","Calendário","Contas","Cartões","Recorrências","Orçamentos","Metas","Assinaturas","Dívidas","Patrimônio","Relatórios","Alertas","Modelos e regras","Configurações","Lixeira")
+private val financeSections=listOf("Resumo","Movimentações","A pagar","A receber","Fluxo futuro","Simulador","Conferência","Calendário","Contas","Cartões","Recorrências","Orçamentos","Metas","Assinaturas","Dívidas","Patrimônio","Relatórios","Alertas","Modelos e regras","Configurações","Lixeira")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun FinanceScreen(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
@@ -95,6 +95,8 @@ private val financeSections=listOf("Resumo","Movimentações","A pagar","A receb
                 }
                 "Fluxo futuro"->item{StudioCard{SectionTitle("Seu saldo ao longo do tempo");Choice("Horizonte",listOf("7 dias","15 dias","30 dias","60 dias","90 dias","Fim do mês","Fim do ano"),horizon,{horizon=it});FinanceFlowChart(data.projection.points,currency,hidden);Text("Previsto: ${financeMoney(data.projection.projectedBalance,currency,hidden)}");data.projection.firstNegativeDate?.let{Text("Saldo abaixo de zero em ${dateLabel(it.toString())}",color=MaterialTheme.colorScheme.error)}}}
                 "Calendário"->item{StudioCard{SectionTitle("Calendário financeiro");val calendarEntries=FinanceEngine.transactions(all,month.atDay(1).minusMonths(1),month.atEndOfMonth().plusMonths(1),currency).filter{it.value("card").isBlank() && FinancialDomain.dueDate(it) in month.atDay(1)..month.atEndOfMonth()}+financeInvoiceEntries(all,month.atDay(1),month.atEndOfMonth(),currency);FinanceCalendar(month,calendarEntries,currency,hidden,::show)}}
+                "Simulador"->item{FinancePlanningPanel(data.projection,currency,hidden,horizon,{horizon=it})}
+                "Conferência"->item{FinanceReviewPanel(all,period,currency,hidden,::show)}
                 "Contas","Cartões","Recorrências","Orçamentos","Metas","Assinaturas","Dívidas","Patrimônio","Modelos e regras"->item{FinanceManagement(section,all,vm,month,currency,hidden,::show,{editScope=null;editor=it},::launchNew)}
                 "Relatórios"->item{FinanceReportsPanel(all,data.summary,month,currency,hidden,{exportCsv.launch("veyra-$month.csv")},{exportPdf.launch("veyra-$month.pdf")},vm)}
                 "Alertas"->{if(data.alerts.isEmpty())item{EmptyCard("Tudo em ordem nos registros","Não há alertas financeiros para os dados disponíveis.")};items(data.alerts,key={it.id}){alert->StudioCard{Text(alert.priority.label.uppercase(),style=MaterialTheme.typography.labelMedium,color=if(alert.priority==AlertPriority.URGENT)MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary);Text(alert.title,style=MaterialTheme.typography.titleMedium);if(!hidden)Text(alert.description);all.firstOrNull{it.id==alert.itemId}?.let{target->TextButton(onClick={show(target)}){Text("Ver registro")}}}}}

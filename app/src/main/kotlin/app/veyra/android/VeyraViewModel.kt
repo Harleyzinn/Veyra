@@ -135,7 +135,19 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
         val epoch=workspaceEpoch
         operation{val current=store.find(debt.id) ?: error("Dívida não encontrada.");require(FinancialDomain.amount(current,"paid")==FinancialDomain.amount(debt,"paid")){"A dívida foi alterada. Abra novamente antes de registrar."};val account=store.find(accountId) ?: error("Conta não encontrada.");require(account.type=="account" && account.deletedAt==0L){"Use uma conta ativa."};val changes=FinanceActions.recordDebtPayment(current,FinancialDomain.parseMinor(value,FinancialDomain.currency(current)),account);store.saveAll(changes);AndroidJobs.financeChanged(getApplication());message="Quitação registrada";if(epoch==workspaceEpoch)withContext(Dispatchers.Main){done()}}
     }
-    fun payInvoice(invoice:CardInvoice,accountId:String)=operation{val card=store.find(invoice.cardId) ?: error("Cartão não encontrado.");val context=store.financeWindow(minOf(financeFrom,invoice.dueDate.minusMonths(2)),maxOf(financeThrough,invoice.dueDate.plusMonths(1)));val current=FinanceEngine.cardInvoices(context,card,invoice.dueDate,invoice.dueDate).firstOrNull{it.id==invoice.id} ?: error("Fatura não encontrada.");if(current.outstandingMinor==0L){message="Esta fatura já está quitada.";return@operation};require(current.paidMinor==invoice.paidMinor && current.outstandingMinor==invoice.outstandingMinor){"A fatura foi alterada. Abra novamente antes de pagar."};val changes=CardEngine.settleInvoice(current,accountId);changes.forEach{FinancialDomain.validate(it,context+changes)};store.saveAll(changes);AndroidJobs.financeChanged(getApplication());message="Pagamento da fatura registrado"}
+    fun payInvoice(invoice:CardInvoice,accountId:String,amountText:String?=null,dateText:String=LocalDate.now().toString(),onDone:()->Unit={})=operation{
+        val card=store.find(invoice.cardId) ?: error("Cartão não encontrado.")
+        val date=LocalDate.parse(dateText);require(!date.isAfter(LocalDate.now())){"Use a data de um pagamento já realizado."}
+        val context=store.financeWindow(minOf(financeFrom,invoice.dueDate.minusMonths(2),date),maxOf(financeThrough,invoice.dueDate.plusMonths(1)))
+        val current=FinanceEngine.cardInvoices(context,card,invoice.dueDate,invoice.dueDate).firstOrNull{it.id==invoice.id} ?: error("Fatura não encontrada.")
+        require(current.outstandingMinor>0){"Esta fatura já está quitada."}
+        require(current.paidMinor==invoice.paidMinor && current.outstandingMinor==invoice.outstandingMinor){"A fatura foi alterada. Abra novamente antes de pagar."}
+        val amount=amountText?.let{FinancialDomain.parseMinor(it,current.currency)} ?: current.outstandingMinor
+        val changes=CardEngine.settleInvoice(current,accountId,date,amount)
+        changes.forEach{FinancialDomain.validate(it,context+changes)};store.saveAll(changes)
+        AndroidJobs.financeChanged(getApplication());message=if(amount<current.outstandingMinor)"Pagamento parcial registrado; o restante continua em aberto." else "Fatura quitada."
+        withContext(Dispatchers.Main){onDone()}
+    }
     fun saveNetWorth(currency:String)=runCatching{commitFinance(listOf(FinanceActions.snapshot(financeState.value,LocalDate.now(),currency)))}.onFailure{error=it.message}
     fun saveMonthClose(month:java.time.YearMonth,currency:String)=operation{val day=(store.preferences()["financialDay"]?.toIntOrNull() ?: 1).coerceIn(1,31);val period=FinanceEngine.period(month,day);val context=store.financeWindow(minOf(period.start.minusMonths(3),LocalDate.now().minusMonths(3)),maxOf(period.end,LocalDate.now()));store.saveAll(FinanceActions.closeMonth(context,month,LocalDate.now(),currency,day));message="Fechamento guardado"}
     override fun onCleared(){cloud.close();store.close();super.onCleared()}

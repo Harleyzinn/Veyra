@@ -4,7 +4,11 @@ Sua vida, em um só lugar. App Android nativo em Kotlin/Jetpack Compose, criado 
 
 ## APK e instalação
 
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.0.1.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.1.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+
+## Novidades da versão 2.1
+
+Pagamento parcial de faturas com data e histórico, simulador de caixa com reserva mínima e margem diária adicional, e conferência de possíveis duplicidades e registros sem categoria. Cálculos exatos, privacidade e dados existentes preservados. Veja [detalhes](docs/RELEASE-2.1.0.md) e [guia financeiro](docs/FINANCE-GUIDE.md).
 
 ## Novidades da versão 2.0
 

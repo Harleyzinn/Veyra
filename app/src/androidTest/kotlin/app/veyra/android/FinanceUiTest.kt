@@ -110,6 +110,59 @@ class FinanceUiTest {
         }
     }
 
+    @Test fun partialInvoicePaymentPersistsExactCashAndKeepsRemainder(){
+        val today=java.time.LocalDate.now()
+        val account=FinancialDomain.normalize(Item(id="partial-account-$token",type="account",title="Conta parcial $token",fields=mapOf("openingMinor" to "100000","currency" to "BRL")))
+        val card=FinancialDomain.normalize(Item(id="partial-card-$token",type="card",title="Cartão parcial $token",fields=mapOf("closing" to "10","due" to "20","limitMinor" to "500000","account" to account.id,"currency" to "BRL")))
+        val buy=FinancialDomain.normalize(Item(id="partial-buy-$token",type="expense",title="Compra parcial $token",date=today.toString(),fields=mapOf("amountMinor" to "10001","card" to card.id,"status" to "pending","currency" to "BRL","category" to "Compras")))
+        WorkspaceStore(context).use{it.saveAll(listOf(account,card,buy))}
+        ActivityScenario.launch(MainActivity::class.java).use{
+            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Cartões")).click()
+            scrollTo(By.text("Registrar pagamento da fatura")).click()
+            text(By.text("Registrar pagamento"))
+            val fields=device.findObjects(By.clazz("android.widget.EditText"));Assert.assertEquals(2,fields.size)
+            fields[0].text="33,33";hideKeyboard();device.takeScreenshot(java.io.File("/sdcard/Download/veyra-partial-2.1.png"));text(By.text("Confirmar registro")).click()
+            val payment=awaitRecord{it.value("paymentType")=="card_payment" && it.value("card")==card.id && it.deletedAt==0L}
+            Assert.assertEquals(3333L,FinancialDomain.amount(payment));Assert.assertEquals(account.id,payment.value("account"))
+            Assert.assertEquals(today.toString(),payment.value("settledDate"))
+            WorkspaceStore(context).use{store->
+                val rows=store.all();val invoice=app.veyra.feature.finance.CardEngine.invoices(rows,card,today.minusMonths(1),today.plusMonths(2)).single()
+                Assert.assertEquals(6668L,invoice.outstandingMinor)
+                Assert.assertEquals(96667L,app.veyra.feature.finance.FinanceEngine.accountBalance(rows,account,today))
+            }
+        }
+    }
+
+    @Test fun simulatorDoesNotWriteTransactionsAndHonorsPrivacy(){
+        val account=FinancialDomain.normalize(Item(id="scenario-account-$token",type="account",title="Conta cenário $token",fields=mapOf("openingMinor" to "100000","currency" to "BRL")))
+        WorkspaceStore(context).use{it.save(account)}
+        val before=WorkspaceStore(context).use{it.exportJson()}
+        ActivityScenario.launch(MainActivity::class.java).use{
+            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Simulador")).click()
+            scrollTo(By.text("Entrada extra"))
+            val fields=device.findObjects(By.clazz("android.widget.EditText"));Assert.assertTrue(fields.isNotEmpty())
+            fields[0].text="100,00";hideKeyboard()
+            scrollTo(By.text("Seu cenário"));Assert.assertEquals(before,WorkspaceStore(context).use{it.exportJson()})
+            scrollTo(By.textContains("Margem diária adicional:"));device.takeScreenshot(java.io.File("/sdcard/Download/veyra-scenario-2.1.png"))
+            repeat(10){device.swipe(device.displayWidth/2,device.displayHeight/3,device.displayWidth/2,device.displayHeight*3/4,15)}
+            text(By.desc("Ocultar valores")).click()
+            scrollTo(By.text("Exiba os valores no topo para usar o simulador."))
+            Assert.assertFalse(device.hasObject(By.text("Seu cenário")))
+        }
+    }
+
+    @Test fun reviewFindsManualDuplicatesWithoutRemovingThem(){
+        val original=FinancialDomain.normalize(Item(id="review-a-$token",type="expense",title="Café conferência $token",fields=mapOf("amountMinor" to "1250","currency" to "BRL","status" to "paid")))
+        val copy=original.copy(id="review-b-$token")
+        WorkspaceStore(context).use{it.saveAll(listOf(original,copy))}
+        ActivityScenario.launch(MainActivity::class.java).use{
+            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Conferência")).click()
+            scrollTo(By.text("Possível duplicidade · 2 registros"))
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-review-2.1.png"))
+            WorkspaceStore(context).use{store->Assert.assertEquals(0L,store.find(original.id)!!.deletedAt);Assert.assertEquals(0L,store.find(copy.id)!!.deletedAt)}
+        }
+    }
+
     @Test fun emptyDashboardHasNoSampleTransactions(){
         ActivityScenario.launch(MainActivity::class.java).use{
             goFinance();scrollTo(By.textContains("Não há exemplos misturados"))

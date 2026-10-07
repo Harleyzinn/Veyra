@@ -98,11 +98,27 @@ Compras novas de cartão reconhecem o gasto e comprometem o limite. Elas não de
 
 Uma compra no dia do fechamento entra no ciclo seguinte. Se o dia de vencimento é igual ou anterior ao fechamento, o vencimento fica no mês seguinte. Dias inexistentes são ajustados ao fim do mês. Estes são os critérios do Veyra; confira o extrato do emissor se o seu cartão usa outro critério e ajuste o vencimento registrado.
 
-O limite usado inclui parcelas futuras em aberto. A fatura reúne as compras do seu ciclo e desconta os pagamentos registrados. **Registrar pagamento da fatura** cria uma saída na conta escolhida e reduz a obrigação; não efetua uma transferência no banco. A tela oferece o registro do saldo aberto da fatura. O motor suporta pagamentos parciais, mas a tela atual não oferece um formulário específico de pagamento parcial.
+O limite usado inclui parcelas futuras em aberto. A fatura reúne as compras do seu ciclo e desconta os pagamentos registrados. **Registrar pagamento da fatura** abre um formulário de valor e data: você pode pagar uma parte ou quitar o restante. A data precisa representar um pagamento já realizado. O app cria uma saída na conta escolhida e reduz a obrigação; não efetua uma transferência no banco. O valor remanescente continua no fluxo previsto e no limite usado; os gastos das compras não são contados novamente.
+
+A tela mostra total, valor pago, saldo aberto e pagamentos carregados na janela atual. Faturas em aberto aparecem antes das quitadas; use **Mais faturas** e **Mais pagamentos** para expandir. Totais incluem os resumos históricos, mas a lista detalhada não afirma conter registros que estão fora da janela carregada. Abrir um pagamento permite conferir ou corrigir seu registro. Se outro lançamento mudou a fatura enquanto o formulário estava aberto, a gravação é recusada para você rever o valor atualizado.
 
 Parcelar divide o total em até 120 partes sem perder centavos. Em R$ 10,00 divididos em três vezes, as partes somam exatamente R$ 10,00. A primeira parcela determina o mês de início; a data original da compra é mantida. **Antecipar vencimentos** move parcelas futuras para a data da antecipação. Não calcula desconto, juros do emissor ou uma negociação bancária.
 
 Compras antigas que a versão anterior já descontava imediatamente preservam esse comportamento na migração. Elas não recebem uma nova cobrança de fatura. Essa marca mantém os saldos históricos compatíveis com os seus dados anteriores.
+
+## Simulador de caixa
+
+Em **Finanças → Explorar → Simulador**, escolha o horizonte e informe uma entrada extra, um gasto extra, a data e uma reserva mínima. Os ajustes são únicos: não representam mensalidades repetidas. Só afetam o dia escolhido e os posteriores. O simulador mostra saldo final com e sem cenário, menor saldo de fim de dia, primeira data abaixo da reserva e gráfico.
+
+A **margem diária adicional** divide uma despesa extra igualmente entre hoje e o fim do horizonte, arredondando para baixo em centavos. Ela respeita a reserva em todas as datas previstas, incluindo os dias anteriores a um depósito futuro. Se o fluxo já está abaixo da reserva, a margem é zero. O saldo agregado não garante dinheiro disponível em uma conta específica.
+
+A reserva é um piso para comparação e não é descontada como despesa. O cenário não grava movimentos, altera saldos ou faz transações bancárias. Os resultados dependem de entradas e obrigações cadastradas; gastos não registrados não aparecem na projeção. Esta é uma ferramenta descritiva dos seus registros. O modo de ocultar valores esconde o simulador.
+
+## Conferência
+
+Em **Finanças → Explorar → Conferência**, o app lista possíveis duplicidades no mês financeiro escolhido e lançamentos sem categoria. As sugestões combinam descrição (ignorando diferenças de acentos, espaços e maiúsculas), data, valor exato, tipo, conta/cartão e forma de pagamento. Moedas, registros apagados e cancelados são separados ou excluídos. Parcelas, recorrências automáticas, previsões e pagamentos de fatura não entram na comparação.
+
+Nenhum registro é excluído ou mesclado automaticamente: duas compras iguais podem ser legítimas. Abra cada item para conferir e corrigir usando os detalhes e a lixeira existentes. Os valores respeitam o modo privacidade. Grupos e listas longas são expandidos sob demanda.
 
 ## Orçamentos, metas e reserva
 

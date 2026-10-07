@@ -5,6 +5,21 @@ import java.time.LocalDate
 import kotlin.test.*
 
 class CardEngineTest {
+    @Test fun partialPaymentsKeepRemainingInvoiceAndDebitOnlyTheirOwnAmounts() {
+        val buy=purchase(value="100.01")
+        val original=CardEngine.invoices(listOf(buy),card,date("2026-10-01"),date("2026-12-31")).single()
+        val first=CardEngine.settleInvoice(original,"account",date("2026-10-18"),3333).single()
+        val remaining=CardEngine.invoices(listOf(buy,first),card,date("2026-10-01"),date("2026-12-31")).single()
+        assertEquals(6668L,remaining.outstandingMinor)
+        assertEquals(-3333L,FinancialDomain.cashDelta(first))
+        assertEquals("2026-10-18",first.value("settledDate"))
+        assertFails{CardEngine.settleInvoice(remaining,"account",amountMinor=6669)}
+        assertFails{CardEngine.settleInvoice(remaining,"account",amountMinor=0)}
+        val second=CardEngine.settleInvoice(remaining,"account",date("2026-10-20"),6668).single()
+        assertNotEquals(first.id,second.id)
+        assertEquals(0L,CardEngine.invoices(listOf(buy,first,second),card,date("2026-10-01"),date("2026-12-31")).single().outstandingMinor)
+        assertEquals(-10001L,listOf(first,second).sumOf(FinancialDomain::cashDelta))
+    }
     private val card = Item(id = "card", type = "card", title = "Cartão", fields = mapOf("closing" to "10", "due" to "20", "limit" to "5000"))
     private fun date(text: String) = LocalDate.parse(text)
     private fun purchase(day: String = "2026-10-09", value: String = "100.00") = FinancialDomain.normalize(Item(type = "expense", title = "Compra", date = day, fields = mapOf("card" to card.id, "amount" to value, "status" to "paid")))
