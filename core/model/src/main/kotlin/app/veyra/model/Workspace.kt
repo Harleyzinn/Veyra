@@ -13,7 +13,10 @@ data class Item(
 ) {
     fun value(key: String) = fields[key].orEmpty()
     fun number(key: String) = value(key).toBigDecimalOrNull() ?: BigDecimal.ZERO
-    fun cents(key: String = "amount") = if(value(key).isBlank()) 0 else Money.parseCents(value(key))
+    fun cents(key: String = "amount"): Long {
+        val minorKey=if(key=="amount")"amountMinor"else "${key}Minor"
+        return if(value(minorKey).isNotBlank())value(minorKey).toLong() else if(value(key).isBlank())0 else Money.parseCents(value(key))
+    }
 }
 enum class FieldKind { TEXT, DECIMAL, MONEY, DATE, CHOICE, REFERENCE }
 data class Field(val key: String, val label: String, val kind: FieldKind = FieldKind.TEXT,
@@ -55,15 +58,18 @@ object Workspace {
         var count=0; while(date.toString() in dates) { count++; date=date.minusDays(1) }; return count
     }
     fun monthly(items: List<Item>, month: String) = items.filter { it.deletedAt==0L && it.date.startsWith(month) }
-    fun income(items: List<Item>) = items.filter{it.type=="income" && (it.value("planned")!="Sim" || it.done)}.fold(0L){a,i->Math.addExact(a,i.cents())}
-    fun expenses(items: List<Item>) = items.filter{it.type=="expense" && (it.value("planned")!="Sim" || it.done)}.fold(0L){a,i->Math.addExact(a,i.cents())}
+    private fun settledFinancial(item:Item):Boolean = if(item.value("status").isBlank())item.value("planned")!="Sim" || item.done
+        else item.value("status").lowercase() in setOf("received","paid","recebido","recebida","pago","paga","realizado","realizada")
+    fun income(items: List<Item>) = items.filter{it.deletedAt==0L && it.type=="income" && settledFinancial(it)}.fold(0L){a,i->Math.addExact(a,i.cents())}
+    fun expenses(items: List<Item>) = items.filter{it.deletedAt==0L && it.type=="expense" && it.value("paymentType")!="card_payment" && settledFinancial(it)}.fold(0L){a,i->Math.addExact(a,i.cents())}
     fun balance(items: List<Item>) = Math.subtractExact(income(items),expenses(items))
     fun accountBalance(items: List<Item>, account: Item): Long {
         var balance=account.cents("opening")
-        items.filter{it.deletedAt==0L && (it.value("planned")!="Sim" || it.done)}.forEach { i ->
+        items.filter{it.deletedAt==0L && settledFinancial(it)}.forEach { i ->
             if(i.value("account")==account.id) when(i.type) {
                 "income" -> balance=Math.addExact(balance,i.cents())
-                "expense","transfer" -> balance=Math.subtractExact(balance,i.cents())
+                "expense" -> if(i.value("card").isBlank() || i.value("financialVersion")!="3" || i.value("legacyCardCash")=="yes" || i.value("paymentType")=="card_payment")balance=Math.subtractExact(balance,i.cents())
+                "transfer" -> balance=Math.subtractExact(balance,i.cents())
             }
             if(i.type=="transfer" && i.value("destination")==account.id) balance=Math.addExact(balance,i.cents())
         }; return balance

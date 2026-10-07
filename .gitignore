@@ -11,3 +11,8 @@ secrets.properties
 *.log
 dist/
 .signing/
+app/google-services.json
+firebase/.firebase/
+firebase/node_modules/
+firebase/*debug.log
+*.service-account.json

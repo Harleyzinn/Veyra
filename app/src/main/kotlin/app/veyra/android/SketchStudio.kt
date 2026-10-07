@@ -48,7 +48,7 @@ private fun renderInk(strokes:List<InkStroke>):Bitmap {
             LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(bottom=16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
                 if(drawings.isEmpty())item{EmptyCard("Espaço para criar","Seus desenhos guardados aparecerão aqui.")}
                 items(drawings,key={it.id}){sketch->
-                    val bitmap=remember(sketch.value("attachment")){runCatching{val bytes=android.util.Base64.decode(sketch.value("attachment"),android.util.Base64.NO_WRAP);android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size)}.getOrNull()}
+                    val bitmap by produceState<Bitmap?>(null,sketch.id,sketch.value("attachmentHash")){value=runCatching{withContext(Dispatchers.IO){val bytes=vm.attachmentBytes(sketch);android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size)}}.getOrNull()}
                     Card(onClick={open(sketch)},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){bitmap?.let{Image(it.asImageBitmap(),sketch.title,Modifier.fillMaxWidth().height(240.dp))};Text(sketch.title,style=MaterialTheme.typography.titleMedium);Text(dateLabel(sketch.date))}}
                 }
             }

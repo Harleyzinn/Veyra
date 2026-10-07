@@ -4,7 +4,13 @@ Sua vida, em um só lugar. App Android nativo em Kotlin/Jetpack Compose, criado 
 
 ## APK e instalação
 
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-1.2.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`, independente do original. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.0.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+
+## Novidades da versão 2.0
+
+Central financeira com captura rápida e modo avançado, dinheiro em unidades mínimas exatas, saldo realizado separado da previsão, recorrências com exceções e escopos de edição, faturas por fechamento, parcelas, transferências, contas a pagar/receber, orçamentos, metas, reserva, quitação de dívidas, patrimônio, relatórios CSV/PDF, gráficos interativos, histórico e lixeira. Os demais módulos permanecem disponíveis.
+
+Novo módulo `core:cloud` com Firebase Auth, login Google, Firestore, Storage privado, App Check, sincronização com revisões, fila offline e conflitos preservados. O app funciona localmente sem configuração Firebase. Para ativar a nuvem, crie seu projeto e siga o [setup exato](docs/FIREBASE-SETUP.md). Não há projeto de produção ou credenciais incluídos no código/APK desta entrega. Leia os [detalhes da versão](docs/RELEASE-2.0.md), [guia financeiro](docs/FINANCE-GUIDE.md) e [validação](docs/VALIDATION-2.0.md).
 
 ## Novidades da versão 1.2
 
@@ -18,7 +24,7 @@ Atualizador via GitHub com download automático em rede sem cobrança por uso, v
 
 - Dashboard com tarefas interativas, finanças, clima, hábitos, água e foco.
 - Tarefas com prioridade, etapas, prazo, recorrência, lembrete e vínculos; calendário e Kanban.
-- Finanças com receitas/despesas realizadas e previstas, contas, transferências, orçamento por categoria, cartões, assinaturas, parcelas, investimentos manuais e gráficos. Planilha com filtros, ordenação e exportação CSV de 11 colunas. Importação CSV/OFX, OCR local de recibos e PDF herdados da base.
+- Finanças com captura simples e avançada, saldo atual e previsto, contas e carteiras, transferências, faturas e parcelas, regras recorrentes, orçamentos, metas, dívidas, patrimônio, fechamento mensal, alertas, gráficos, filtros e CSV de 15 colunas. Importação CSV/OFX, OCR local, comprovantes e PDF.
 - Notas com pastas, tags, arquivo, favoritos, salvamento automático e prévia Markdown; diário e links.
 - Clima por várias cidades, previsão horária/7 dias e cache. Modo manual de temperatura/condição para personalização.
 - Hábitos, água, sono, saúde, treinos, Pomodoro, estudos e flashcards.
@@ -27,7 +33,7 @@ Atualizador via GitHub com download automático em rede sem cobrança por uso, v
 - Busca global, favoritos, lixeira, desfazer, widget, atalhos, notificações, backup JSON e bloqueio PIN/biometria.
 - Temas claro/escuro/AMOLED/sistema/dinâmico, fonte Manrope embarcada e identidade violeta/grafite.
 
-Os registros começam vazios no APK. Exemplos usados nos testes e nas capturas de tela não são incluídos na instalação. Não há sincronização bancária ou em nuvem, nem faturamento completo de cartão por ciclo. Veja os [limites e mudanças](docs/RELEASE-1.0.md).
+Os registros começam vazios no APK. Exemplos dos testes e capturas não entram na instalação. Não há conexão bancária, câmbio automático ou cotação de investimentos; valores são informados pelo usuário. Firebase requer configuração do proprietário e novo build. As limitações de autenticação, App Check e distribuição estão no guia de setup.
 
 ## Compilar
 
@@ -35,7 +41,9 @@ JDK 17, SDK 35 e Build Tools 35.0.0. Configure `JAVA_HOME` e `ANDROID_HOME`, ou 
 
 ```powershell
 ./gradlew.bat :core:model:test :feature:finance:test :app:lintDebug :app:assembleDebug
+./gradlew.bat :core:cloud:testDebugUnitTest
 ./gradlew.bat :core:data:connectedDebugAndroidTest :app:connectedDebugAndroidTest
+./scripts/test-firebase-security.ps1
 ./scripts/build-apk.ps1
 # Depois de commit e push, publicar o APK com a mesma chave:
 ./scripts/publish-release.ps1
@@ -45,6 +53,6 @@ O script gera a chave local na pasta privada e ignorada `.signing`, alinha o APK
 
 ## Base e arquitetura
 
-`app` contém a interface Compose e integrações Android. `core:model` contém os modelos e cálculos; `core:data`, Room/backup; `core:designsystem`, o tema. `feature:*` mantém os domínios e integrações da base. A documentação anterior foi preservada em [BASE-README.md](docs/BASE-README.md).
+`app` contém Compose e integrações Android. `core:model` preserva os modelos; `core:data` gerencia Room, índice financeiro, busca FTS, auditoria, revisões, outbox e isolamento físico por UID. `feature:finance` contém os motores JVM de dinheiro, recorrências, cartões, previsões e indicadores. `core:cloud` contém autenticação, sincronização e anexos Firebase; `core:designsystem`, o tema. A [auditoria e migração](docs/FINANCE-ARCHITECTURE.md) explica as mudanças. A documentação anterior foi preservada em [BASE-README.md](docs/BASE-README.md).
 
 Clima: [Open-Meteo](https://open-meteo.com/), geocodificação GeoNames. Manrope: licença SIL Open Font License em [Manrope-OFL.txt](docs/Manrope-OFL.txt). Sem anúncios, analytics ou conta obrigatória. Dados locais e backups continuam sujeitos às condições descritas no guia.

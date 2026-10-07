@@ -35,10 +35,18 @@ class StudioFlowTest {
         ))
     }}
     @Test fun financePlanilhaAndBudgets(){ActivityScenario.launch(MainActivity::class.java).use{
+        fun reveal(selector:BySelector):Boolean{
+            repeat(10){if(device.wait(Until.hasObject(selector),1500))return true;device.swipe(device.displayWidth/2,device.displayHeight*3/4,device.displayWidth/2,device.displayHeight/3,25);device.waitForIdle()}
+            return false
+        }
         Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));click("Finanças")
         Assert.assertTrue(device.wait(Until.hasObject(By.textContains("4.800")),10000));screenshot("financas")
-        click("Planilha");Assert.assertTrue(device.wait(Until.hasObject(By.text("Mercado da semana")),10000));screenshot("planilha")
-        click("Orçamentos");Assert.assertTrue(device.wait(Until.hasObject(By.text("Comer bem, gastar melhor")),10000));Assert.assertTrue(device.wait(Until.hasObject(By.textContains("513,50")),10000))
+        click("Movimentações");Assert.assertTrue(reveal(By.text("Mercado da semana")));screenshot("movimentacoes")
+        repeat(6){device.swipe(device.displayWidth/2,device.displayHeight/3,device.displayWidth/2,device.displayHeight*3/4,25);device.waitForIdle()}
+        click("Explorar: Movimentações");click("Orçamentos")
+        Assert.assertTrue(reveal(By.text("Comer bem, gastar melhor")))
+        Assert.assertTrue(reveal(By.textContains("286,50")))
+        Assert.assertTrue(reveal(By.textContains("513,50")))
     }}
     @Test fun calendarShowsTasksAndKanbanStages(){ActivityScenario.launch(MainActivity::class.java).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));click("Agenda")

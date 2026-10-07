@@ -16,14 +16,17 @@ data class EntryRecord(@PrimaryKey val id: String, val kind: String, val title: 
     @Insert(onConflict=OnConflictStrategy.REPLACE) fun save(entry: EntryRecord)
     @Query("DELETE FROM entries WHERE id=:id") fun delete(id: String)
 }
-@Database(entities=[EntryRecord::class, ItemRecord::class, PreferenceRecord::class], version=2, exportSchema=true)
+@Database(entities=[EntryRecord::class, ItemRecord::class, PreferenceRecord::class,
+    ItemSummaryRecord::class,ItemSearchRecord::class,FinanceIndexRecord::class,ItemMetadataRecord::class,SyncOutboxRecord::class,AuditEventRecord::class,
+    SyncConflictRecord::class,SyncCursorRecord::class], version=3, exportSchema=true)
 abstract class VeyraDatabase : RoomDatabase() {
     abstract fun entries(): EntryDao
     abstract fun workspace(): WorkspaceDao
+    abstract fun persistence(): PersistenceDao
 }
 
 class EntryStore(context: Context, databaseName: String = "veyra.db") : AutoCloseable {
-    private val db = Room.databaseBuilder(context.applicationContext, VeyraDatabase::class.java, databaseName).addMigrations(WorkspaceStore.MIGRATION).build()
+    private val db = Room.databaseBuilder(context.applicationContext, VeyraDatabase::class.java, databaseName).addMigrations(*WorkspaceStore.MIGRATIONS).build()
     override fun close() { db.close() }
     fun all(): List<Entry> = db.entries().all().map { it.model() }
     fun save(e: Entry) {

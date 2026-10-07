@@ -1,0 +1,418 @@
+{
+  "indexes": [
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "category"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "accountId"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "cardId"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "type"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "status"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "recurrenceId"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "ASCENDING",
+          "fieldPath": "currency"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    },
+    {
+      "fields": [
+        {
+          "order": "ASCENDING",
+          "fieldPath": "deletedAt"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "date"
+        },
+        {
+          "order": "DESCENDING",
+          "fieldPath": "__name__"
+        }
+      ],
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "transactions"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "transactions"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "transactions"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "accounts"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "accounts"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "accounts"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "creditCards"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "creditCards"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "creditCards"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "recurringTransactions"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "recurringTransactions"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "recurringTransactions"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "budgets"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "budgets"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "budgets"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "goals"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "goals"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "goals"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "subscriptions"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "subscriptions"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "subscriptions"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "debts"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "debts"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "debts"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "automationRules"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "automationRules"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "automationRules"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "categories"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "categories"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "categories"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "templates"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "templates"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "templates"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "assets"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "assets"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "assets"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "notes"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "notes"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "notes"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "tasks"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "tasks"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "tasks"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "settings"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "settings"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "settings"
+    },
+    {
+      "fieldPath": "fields",
+      "indexes": [],
+      "collectionGroup": "workspace"
+    },
+    {
+      "fieldPath": "notes",
+      "indexes": [],
+      "collectionGroup": "workspace"
+    },
+    {
+      "fieldPath": "tags",
+      "indexes": [],
+      "collectionGroup": "workspace"
+    }
+  ]
+}

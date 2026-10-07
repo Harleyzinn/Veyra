@@ -12,11 +12,14 @@ object Statement {
         val header=rows.first().map{it.trim().lowercase().removePrefix("\uFEFF")}
         val date=header.indexOf("date"); val title=header.indexOf("title");val amount=header.indexOf("amount");val category=header.indexOf("category")
         require(date>=0 && title>=0 && amount>=0){"Use cabeçalho date,title,amount,category"}
+        val duplicates=mutableMapOf<String,Int>()
         return rows.drop(1).filter{it.any(String::isNotBlank)}.mapIndexed { index,row ->
             require(row.size==header.size){"Linha ${index+2}: colunas incompatíveis"}
             val d=LocalDate.parse(row[date]).toString(); val cents=Money.parseCents(row[amount])
             require(cents!=Long.MIN_VALUE && row[title].isNotBlank())
-            imported(d,row[title],cents,if(category>=0) row[category] else "", "csv:${row.joinToString("|")}")
+            val fingerprint="csv:${row.joinToString("|")}"
+            val duplicate=duplicates.getOrDefault(fingerprint,0);duplicates[fingerprint]=duplicate+1
+            imported(d,row[title],cents,if(category>=0) row[category] else "", fingerprint+if(duplicate==0)""else ":duplicate:$duplicate")
         }
     }
     fun ofx(text:String):List<Item> {
@@ -37,19 +40,19 @@ object Statement {
         type=if(cents<0) "expense" else "income",title=title.take(200),date=date,
         fields=mapOf("amount" to BigDecimal.valueOf(kotlin.math.abs(cents),2).toPlainString(),"category" to category,"imported" to "Sim"))
     fun export(items:List<Item>):String {
-        fun escape(value:String):String { val safe=if(value.firstOrNull() in listOf('=','+','-','@')) "'$value" else value;return "\"${safe.replace("\"","\"\"")}\"" }
-        return "date,title,amount,category\r\n"+items.filter{it.type in listOf("income","expense")}.joinToString("\r\n"){
+        fun escape(value:String):String { val safe=if(value.trimStart().firstOrNull() in listOf('=','+','-','@')) "'$value" else value;return "\"${safe.replace("\"","\"\"")}\"" }
+        return "date,title,amount,category\r\n"+items.filter{it.deletedAt==0L && it.type in listOf("income","expense")}.joinToString("\r\n"){
             listOf(it.date,escape(it.title),(if(it.type=="expense") "-" else "")+it.value("amount"),escape(it.value("category"))).joinToString(",")
         }
     }
     /** Complete ledger for spreadsheet analysis. Restore full records with JSON backup. */
     fun report(items:List<Item>,workspace:List<Item>):String {
-        fun escape(value:String):String{val safe=if(value.firstOrNull() in listOf('=','+','-','@'))"'$value"else value;return "\"${safe.replace("\"","\"\"")}\""}
+        fun escape(value:String):String{val safe=if(value.trimStart().firstOrNull() in listOf('=','+','-','@'))"'$value"else value;return "\"${safe.replace("\"","\"\"")}\""}
         fun name(id:String)=workspace.firstOrNull{it.id==id && it.deletedAt==0L}?.title.orEmpty()
-        return "data,descricao,tipo,valor,categoria,conta,destino,cartao,status,tags,notas\r\n"+items.filter{it.deletedAt==0L && it.type in setOf("income","expense","transfer")}.joinToString("\r\n"){i->
+        return "data,descricao,tipo,valor,categoria,conta,destino,cartao,status,tags,notas,moeda,subcategoria,vencimento,competencia,forma_pagamento,pessoa,centro_custo,essencial,reembolsavel,recorrencia,parcela,total_parcelas\r\n"+items.filter{it.deletedAt==0L && it.type in setOf("income","expense","transfer")}.joinToString("\r\n"){i->
             val type=when(i.type){"income"->"Receita";"expense"->"Despesa";else->"Transferência"}
-            val amount=BigDecimal.valueOf(if(i.type=="expense")-i.cents()else i.cents(),2).toPlainString()
-            listOf(escape(i.date),escape(i.title),escape(type),amount,escape(i.value("category")),escape(name(i.value("account"))),escape(name(i.value("destination"))),escape(name(i.value("card"))),escape(if(i.value("planned")=="Sim" && !i.done)"Previsto"else "Realizado"),escape(i.tags),escape(i.notes)).joinToString(",")
+            val amount=FinancialDomain.decimal(if(i.type=="expense")-FinancialDomain.amount(i)else FinancialDomain.amount(i),FinancialDomain.currency(i))
+            listOf(escape(i.date),escape(i.title),escape(type),amount,escape(i.value("category")),escape(name(i.value("account"))),escape(name(i.value("destination"))),escape(name(i.value("card"))),escape(if(i.value("status").isBlank())if(i.value("planned")=="Sim" && !i.done)"Previsto"else "Realizado"else FinancialDomain.status(i).label),escape(i.tags),escape(i.notes),escape(FinancialDomain.currency(i)),escape(i.value("subcategory")),escape(i.value("dueDate")),escape(i.value("competence")),escape(i.value("paymentMethod")),escape(i.value("person")),escape(i.value("costCenter")),escape(i.value("essential")),escape(i.value("reimbursable")),escape(i.value("source")),escape(i.value("installmentIndex")),escape(i.value("installmentCount"))).joinToString(",")
         }
     }
     private fun parseRows(text:String):List<List<String>> {

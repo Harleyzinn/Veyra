@@ -69,7 +69,7 @@ fun moduleIcon(type:String):ImageVector=when(type){
             }
             Text(item.title,style=MaterialTheme.typography.titleMedium)
             if(item.notes.isNotBlank())Text(item.notes,maxLines=3,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            if(item.value("amount").isNotBlank())Text(money(item.cents()),style=MaterialTheme.typography.titleLarge)
+            if(item.value("amount").isNotBlank())Text(financeMoney(item.cents(),item.value("currency").ifBlank{"BRL"},vm.preferences["financeHidden"]=="Sim"),style=MaterialTheme.typography.titleLarge)
             if(item.tags.isNotBlank())Text(item.tags,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
             if(item.type!="bill" && (Registry.spec(item.type).checkable || item.type in setOf("expense","income") && item.value("planned")=="Sim"))TextButton(onClick={vm.complete(item)}){Text(if(item.done)"✓ Concluído"else if(item.type in setOf("income","expense"))"Marcar como realizado"else "Concluir")}
             if(item.type=="habit")TextButton(onClick={vm.checkin(item)}){Text("Registrar hoje")}

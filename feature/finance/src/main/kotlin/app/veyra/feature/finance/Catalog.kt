@@ -1,15 +1,20 @@
 package app.veyra.feature.finance
 import app.veyra.model.*
 object Catalog {
-    private val transaction=listOf(Field("amount","Valor em R$",FieldKind.MONEY,required=true),Field("category","Categoria"),Field("account","Conta",FieldKind.REFERENCE),Field("card","Cartão",FieldKind.REFERENCE),Field("planned","Previsto",FieldKind.CHOICE,listOf("Não","Sim")))
+    private val transaction=listOf(Field("amount","Valor",FieldKind.MONEY,required=true),Field("category","Categoria"),Field("subcategory","Subcategoria"),Field("currency","Moeda ISO • BRL, USD, EUR"),Field("account","Conta",FieldKind.REFERENCE),Field("card","Cartão",FieldKind.REFERENCE),Field("planned","Previsto",FieldKind.CHOICE,listOf("Não","Sim")),Field("paymentMethod","Forma de pagamento"),Field("dueDate","Vencimento",FieldKind.DATE),Field("competence","Competência • AAAA-MM"),Field("person","Pessoa / empresa"),Field("costCenter","Centro de custo"))
     val specs=listOf(
         ItemSpec("expense","Despesas","Finanças",transaction), ItemSpec("income","Receitas","Finanças",transaction),
-        ItemSpec("account","Contas e carteiras","Finanças",listOf(Field("opening","Saldo inicial",FieldKind.MONEY),Field("bank","Banco / instituição"))),
+        ItemSpec("account","Contas e carteiras","Finanças",listOf(Field("opening","Saldo inicial",FieldKind.MONEY),Field("bank","Banco / instituição"),Field("accountType","Tipo",FieldKind.CHOICE,listOf("Corrente","Digital","Poupança","Dinheiro","Carteira","Investimentos","Outras")),Field("currency","Moeda ISO"),Field("color","Cor"))),
         ItemSpec("transfer","Transferências","Finanças",listOf(Field("amount","Valor",FieldKind.MONEY,required=true),Field("account","Origem",FieldKind.REFERENCE,required=true),Field("destination","Destino",FieldKind.REFERENCE,required=true))),
-        ItemSpec("card","Cartões","Finanças",listOf(Field("limit","Limite",FieldKind.MONEY),Field("closing","Dia de fechamento",FieldKind.DECIMAL),Field("due","Dia de vencimento",FieldKind.DECIMAL))),
+        ItemSpec("card","Cartões","Finanças",listOf(Field("limit","Limite",FieldKind.MONEY),Field("closing","Dia de fechamento",FieldKind.DECIMAL),Field("due","Dia de vencimento",FieldKind.DECIMAL),Field("bank","Banco"),Field("brand","Bandeira"),Field("lastFour","Últimos 4 dígitos"),Field("currency","Moeda ISO"),Field("account","Conta para pagamento",FieldKind.REFERENCE),Field("color","Cor"))),
         ItemSpec("budget","Orçamentos","Finanças",listOf(Field("category","Categoria",required=true),Field("amount","Limite mensal",FieldKind.MONEY,required=true))),
-        ItemSpec("subscription","Assinaturas e recorrências","Finanças",transaction,true),
+        ItemSpec("subscription","Assinaturas e recorrências","Finanças",transaction+listOf(Field("frequency","Frequência",FieldKind.CHOICE,RecurrenceFrequency.entries.map{it.label}),Field("endDate","Fim da série",FieldKind.DATE),Field("occurrenceCount","Quantidade de ocorrências",FieldKind.DECIMAL)),true),
         ItemSpec("installment_plan","Compras parceladas","Finanças",listOf(Field("amount","Total",FieldKind.MONEY),Field("count","Parcelas",FieldKind.DECIMAL))),
-        ItemSpec("investment","Investimentos manuais","Finanças",listOf(Field("amount","Valor investido",FieldKind.MONEY),Field("current","Valor atual",FieldKind.MONEY),Field("institution","Instituição")))
+        ItemSpec("investment","Investimentos manuais","Finanças",listOf(Field("amount","Valor investido",FieldKind.MONEY),Field("current","Valor atual",FieldKind.MONEY),Field("institution","Instituição"),Field("currency","Moeda ISO"))),
+        ItemSpec("recurring_rule","Séries financeiras","Finanças",transaction+listOf(Field("transactionType","Tipo",FieldKind.CHOICE,listOf("income","expense")),Field("frequency","Frequência",FieldKind.CHOICE,RecurrenceFrequency.entries.map{it.label}),Field("startDate","Início",FieldKind.DATE),Field("endDate","Fim",FieldKind.DATE),Field("occurrenceCount","Ocorrências",FieldKind.DECIMAL),Field("dayOfMonth","Dia do mês",FieldKind.DECIMAL),Field("weekdays","Dias da semana • 1,3,5")),true),
+        ItemSpec("financial_category","Categorias financeiras","Finanças",listOf(Field("transactionType","Tipo",FieldKind.CHOICE,listOf("income","expense")),Field("category","Categoria principal"),Field("subcategory","Subcategoria"))),
+        ItemSpec("financial_rule","Regras financeiras","Finanças",listOf(Field("contains","Descrição contém",required=true),Field("category","Categoria"),Field("subcategory","Subcategoria"),Field("account","Conta",FieldKind.REFERENCE),Field("enabled","Ativa",FieldKind.CHOICE,listOf("yes","no")))),
+        ItemSpec("financial_template","Lançamentos favoritos","Finanças",transaction+Field("transactionType","Tipo",FieldKind.CHOICE,listOf("income","expense"))),
+        ItemSpec("financial_asset","Ativos e patrimônio","Finanças",listOf(Field("amount","Valor de aquisição",FieldKind.MONEY),Field("current","Valor atual",FieldKind.MONEY),Field("assetType","Tipo de ativo"),Field("currency","Moeda ISO")))
     )
 }

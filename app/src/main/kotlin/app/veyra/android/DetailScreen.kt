@@ -37,7 +37,7 @@ import java.time.*
         if(item.type!="bill" && (Registry.spec(item.type).checkable || item.type in setOf("income","expense") && item.value("planned")=="Sim"))item{Button(onClick={vm.complete(item)},modifier=Modifier.fillMaxWidth()){Text(if(item.type in setOf("income","expense")){if(item.done)"Voltar a previsto"else "Marcar como realizado"}else if(item.done)"Reabrir"else "Concluir")}}
         item{Row{Button(onClick={edit(item)}){Text("Editar")};TextButton(onClick={delete(item)}){Text("Mover à lixeira")}}}
         item{OutlinedButton(onClick={attachment.launch(arrayOf("image/*","application/pdf","text/plain"))}){Text("Anexar arquivo • até 10 MB")}}
-        if(item.value("attachment").isNotBlank())item{Button(onClick={download.launch(item.title+when(item.value("mime")){"application/pdf"->".pdf";"image/png"->".png";"image/jpeg"->".jpg";else->".bin"})}){Text("Salvar anexo")}}
+        if(item.value("attachment").isNotBlank() || item.value("hasAttachment")=="yes" || item.value("cloudAttachmentPath").isNotBlank())item{Button(onClick={download.launch(item.title+when(item.value("mime")){"application/pdf"->".pdf";"image/png"->".png";"image/jpeg"->".jpg";else->".bin"})}){Text("Salvar anexo")}}
         if(item.type in Registry.contexts){
             item{Text("Tudo conectado",style=MaterialTheme.typography.titleLarge);Row{TextButton(onClick={create("task")}){Text("+ Tarefa")};TextButton(onClick={create("note")}){Text("+ Nota")};TextButton(onClick={create("expense")}){Text("+ Gasto")}}}
             item{Choice("Adicionar vínculo",listOf("event","document","reservation","packing","grade","exam","focus","fuel","maintenance"),"",{create(it)}){Registry.spec(it).label}}

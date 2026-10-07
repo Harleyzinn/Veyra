@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function verified(uid) { return owner(uid) && request.auth.token.email_verified == true; }
+    function profile(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function active(uid) { return exists(/databases/$(database)/documents/users/$(uid)) && profile(uid).deleting == false; }
+    function markedChanged(uid) { return getAfter(/databases/$(database)/documents/users/$(uid)).data.latestChangeAt == request.time; }
+    function markerOnlyUpdate(uid) {
+      return owner(uid) && resource.data.ownerUid == uid && resource.data.deleting == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['latestChangeAt','updatedAt'])
+        && request.resource.data.latestChangeAt == request.time && request.resource.data.updatedAt == request.time;
+    }
+    function small(value, max) { return value is string && value.size() <= max; }
+    function minor(value) { return value is int && value >= -900000000000000 && value <= 900000000000000; }
+    function calendarDate(value) {
+      let parts = value.split('-');
+      // The native constructor rejects impossible dates, including non-leap February 29.
+      return value.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}') && int(parts[0]) >= 1
+        && timestamp.date(int(parts[0]),int(parts[1]),int(parts[2])) is timestamp;
+    }
+    function known(bucket) { return bucket in ['transactions','accounts','creditCards','recurringTransactions','budgets','goals','subscriptions','debts','automationRules','categories','templates','assets','notes','tasks','settings','workspace']; }
+    function validType(bucket, type) {
+      return (bucket == 'transactions' && type in ['income','expense','transfer','invoice_payment','bill','receivable'])
+        || (bucket == 'accounts' && type == 'account') || (bucket == 'creditCards' && type == 'card')
+        || (bucket == 'recurringTransactions' && type in ['recurrence','finance_recurrence','recurring_rule','recurrence_exception','installment_plan'])
+        || (bucket == 'budgets' && type == 'budget') || (bucket == 'goals' && type in ['savings_goal','finance_goal','emergency_reserve'])
+        || (bucket == 'subscriptions' && type == 'subscription') || (bucket == 'debts' && type in ['debt','loan'])
+        || (bucket == 'automationRules' && type in ['finance_rule','financial_rule','automation'])
+        || (bucket == 'categories' && type in ['finance_category','financial_category'])
+        || (bucket == 'templates' && type in ['finance_template','financial_template'])
+        || (bucket == 'assets' && type in ['investment','asset','financial_asset','networth_snapshot','month_close','cash_carry','card_carry'])
+        || (bucket == 'notes' && type == 'note') || (bucket == 'tasks' && type == 'task')
+        || (bucket == 'settings' && type == 'cloud_settings')
+        || (bucket == 'workspace' && type.matches('[a-z_]{1,40}') && !(type in ['income','expense','transfer','invoice_payment','bill','receivable','account','card','recurrence','finance_recurrence','recurring_rule','recurrence_exception','installment_plan','budget','savings_goal','finance_goal','emergency_reserve','subscription','debt','loan','finance_rule','financial_rule','automation','finance_category','financial_category','finance_template','financial_template','investment','asset','financial_asset','networth_snapshot','month_close','cash_carry','card_carry','note','task','cloud_settings']));
+    }
+    function moneyField(fields, key, signed) {
+      let value = fields.get(key,'0');
+      return value is string && value.matches(signed ? '-?[0-9]{1,15}' : '[0-9]{1,15}') && minor(int(value));
+    }
+    function validFields(fields) {
+      return fields is map && fields.keys().size() <= 100 && !('attachment' in fields)
+        && moneyField(fields,'amountMinor',true);
+    }
+    function dateField(fields, key) {
+      let value = fields.get(key,'');
+      return value is string && (value == '' || calendarDate(value));
+    }
+    function integerField(fields, key, low, high) {
+      let value = fields.get(key,'');
+      return value is string && (value == '' || (value.matches('[0-9]{1,5}') && int(value) >= low && int(value) <= high));
+    }
+    function recurrenceFields(fields) {
+      let start = fields.get('startDate','');
+      let end = fields.get('endDate','');
+      let frequency = fields.get('frequency','');
+      return integerField(fields,'interval',1,365)
+        && integerField(fields,'dayOfMonth',1,31) && integerField(fields,'occurrenceCount',1,10000)
+        && fields.get('transactionType','') in ['','income','expense']
+        && fields.get('customUnit','') in ['','days','weeks','months','years']
+        && frequency is string && (frequency == '' || frequency.lower() in ['daily','weekly','fortnightly','monthly','bimonthly','quarterly','semiannual','yearly','custom','diária','semanal','quinzenal','mensal','bimestral','trimestral','semestral','anual','personalizada'])
+        && (start == '' || end == '' || end >= start)
+        && dateField(fields,'startDate') && dateField(fields,'endDate') && dateField(fields,'pausedAt')
+        && moneyField(fields,'installmentAmountMinor',false);
+    }
+    function budgetFields(fields) {
+      let value = fields.get('thresholds','');
+      return value is string && (value == '' || (value.matches('(100|[1-9][0-9]?)(,(100|[1-9][0-9]?))*')
+        && value.split(',').toSet().size() == value.split(',').size()));
+    }
+    function validSettings(fields) {
+      return fields.keys().hasOnly(['name','theme','profile','home','hidden','favoriteModules','focusMinutes','breakMinutes','weatherMode','weatherCity','weatherTemperature','weatherCondition','clockZones','financeCurrency','financeHideValues','financeHidden','financeFirstDay','financialDay','financeNotifications','financeBudgetAlerts','financeRecentIncomeCategory','financeRecentExpenseCategory','financeRecentAccount','recentIncomeCategory','recentExpenseCategory','recentFinanceAccount']);
+    }
+    function matchingReference(uid, bucket, id, key, currency) {
+      let target = get(/databases/$(database)/documents/users/$(uid)/$(bucket)/$(key)).data;
+      return target.ownerUid == uid && target.id == id && target.currency == currency && target.deletedAt == 0;
+    }
+    function ownReference(uid, bucket, id, key, currency) {
+      return id == '' || (key.matches('[a-f0-9]{64}') && matchingReference(uid,bucket,id,key,currency));
+    }
+    function transactionFields(uid, data, fields) {
+      return moneyField(fields,'installmentAmountMinor',false) && dateField(fields,'dueDate')
+        && dateField(fields,'settledDate') && dateField(fields,'firstInstallment')
+        && data.accountId == fields.get('account','') && data.destinationId == fields.get('destination','')
+        && data.cardId == fields.get('card','') && data.category == fields.get('category','')
+        && data.status == fields.get('status','') && data.currency == fields.get('currency','BRL')
+        && (data.deletedAt > 0 || (data.amountMinor >= 0
+          && ownReference(uid,'accounts',data.accountId,data.accountDocId,data.currency)
+          && ownReference(uid,'accounts',data.destinationId,data.destinationDocId,data.currency)
+          && ownReference(uid,'creditCards',data.cardId,data.cardDocId,data.currency)
+          && (data.type != 'transfer' || (data.accountId != '' && data.destinationId != '' && data.accountId != data.destinationId))));
+    }
+    function bucketFields(uid, bucket, data, fields) {
+      // Evaluate only the schema of this collection. This preserves all domain checks while
+      // staying within the Rules expression budget for rich documents and multi-write batches.
+      return bucket == 'transactions' ? transactionFields(uid,data,fields)
+        : bucket in ['recurringTransactions','subscriptions'] ? recurrenceFields(fields)
+        : bucket == 'accounts' ? moneyField(fields,'openingMinor',true)
+        : bucket == 'creditCards' ? (moneyField(fields,'limitMinor',false) && integerField(fields,'closing',1,31) && integerField(fields,'due',1,31))
+        : bucket == 'goals' ? (moneyField(fields,'currentMinor',false) && moneyField(fields,'savedMinor',false)
+          && moneyField(fields,'monthlyContributionMinor',false) && dateField(fields,'targetDate') && dateField(fields,'dueDate') && dateField(fields,'settledDate'))
+        : bucket == 'debts' ? (moneyField(fields,'paidMinor',false) && moneyField(fields,'paymentMinor',false)
+          && moneyField(fields,'installmentAmountMinor',false) && dateField(fields,'dueDate') && dateField(fields,'settledDate'))
+        : bucket == 'assets' ? (moneyField(fields,'currentMinor',false) && moneyField(fields,'incomeMinor',false)
+          && moneyField(fields,'expenseMinor',false) && moneyField(fields,'netWorthMinor',true) && moneyField(fields,'savingsMinor',true))
+        : bucket == 'categories' ? fields.get('kind','') in ['','income','expense']
+        : bucket == 'budgets' ? budgetFields(fields)
+        : bucket == 'settings' ? validSettings(fields)
+        : true;
+    }
+    function identityEnvelope(bucket, data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 512 && validType(bucket,data.type)
+        && data.createdAt is int && data.createdAt >= 0;
+    }
+    function envelope(uid, bucket, data) {
+      let fields = data.fields;
+      return data.keys().hasOnly(['id','ownerUid','type','title','notes','date','done','favorite','tags','parentId','fields','amountMinor','currency','category','accountId','accountDocId','destinationId','destinationDocId','cardId','cardDocId','status','recurrenceId','createdAt','deletedAt','revision','operationId','updatedAt'])
+        && data.ownerUid == uid
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200 && data.notes is string && data.notes.size() <= 100000
+        && data.date is string && (data.date == '' || calendarDate(data.date))
+        && data.done is bool && data.favorite is bool && data.tags is string && data.tags.size() <= 10000 && data.parentId is string
+        && validFields(fields)
+        && minor(data.amountMinor) && data.currency.matches('[A-Z]{3}')
+        && data.category is string && data.category.size() <= 200 && data.accountId is string && data.destinationId is string && data.cardId is string
+        && data.accountDocId is string && data.destinationDocId is string && data.cardDocId is string
+        && data.status in ['','received','paid','pending','expected','overdue','cancelled','Recebido','Pago','Pendente','Previsto','Atrasado','Cancelado']
+        && data.recurrenceId is string
+        && data.deletedAt is int && data.deletedAt >= 0 && data.revision is int && data.revision >= 1
+        && data.operationId is string && data.operationId.size() > 0 && data.operationId.size() <= 100 && data.updatedAt == request.time
+        && (!( 'amountMinor' in fields) || fields.amountMinor == string(data.amountMinor))
+        && bucketFields(uid,bucket,data,fields);
+    }
+    match /users/{uid} {
+      allow read: if owner(uid);
+      allow create: if owner(uid) && request.resource.data.ownerUid == uid && request.resource.data.deleting == false
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasAll(['ownerUid','name','email','photo','emailVerified','createdAt','lastAccessAt','updatedAt','latestChangeAt','deleting'])
+        && request.resource.data.keys().hasOnly(['ownerUid','name','email','photo','emailVerified','createdAt','lastAccessAt','updatedAt','latestChangeAt','deleting'])
+        && small(request.resource.data.name,100) && small(request.resource.data.email,320) && small(request.resource.data.photo,1000)
+        && request.resource.data.emailVerified is bool && request.resource.data.lastAccessAt == request.time && request.resource.data.latestChangeAt == request.time;
+      // Most writes only advance this marker. Check the exact diff instead of revalidating
+      // unchanged profile strings for every document in a batch.
+      allow update: if markerOnlyUpdate(uid) || (owner(uid) && request.resource.data.ownerUid == uid && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasOnly(['ownerUid','name','email','photo','emailVerified','createdAt','lastAccessAt','updatedAt','latestChangeAt','deleting','expiresAt'])
+        && (resource.data.deleting == false || request.resource.data.deleting == true)
+        && (!( 'createdAt' in resource.data) || !( 'createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && (!( 'name' in request.resource.data) || small(request.resource.data.name,100))
+        && (!( 'email' in request.resource.data) || small(request.resource.data.email,320))
+        && (!( 'photo' in request.resource.data) || small(request.resource.data.photo,1000)));
+      allow delete: if false;
+      match /{bucket}/{documentId} {
+        allow get: if verified(uid) && known(bucket);
+        allow list: if verified(uid) && known(bucket) && request.query.limit != null && request.query.limit <= 300;
+        allow create: if verified(uid) && active(uid) && known(bucket) && request.resource.data.revision == 1
+          && identityEnvelope(bucket,request.resource.data) && envelope(uid,bucket,request.resource.data) && markedChanged(uid);
+        allow update: if verified(uid) && active(uid) && known(bucket)
+          && request.resource.data.id == resource.data.id && request.resource.data.type == resource.data.type
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.revision == resource.data.revision + 1
+          && request.resource.data.operationId != resource.data.operationId
+          // ID, type and creation time were validated on create and cannot change. Rechecking
+          // their entire schema would duplicate evaluation on every rich document revision.
+          && envelope(uid,bucket,request.resource.data) && markedChanged(uid);
+        // Regular delete is a synchronized tombstone. Permanent physical removal only during
+        // authenticated account deletion, after the root profile has been locked.
+        allow delete: if verified(uid) && known(bucket) && profile(uid).deleting == true;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

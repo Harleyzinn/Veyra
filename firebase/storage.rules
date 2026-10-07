@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true; }
+    function active(uid) {
+      return firestore.exists(/databases/(default)/documents/users/$(uid))
+        && firestore.get(/databases/(default)/documents/users/$(uid)).data.deleting == false;
+    }
+    match /users/{uid}/{folder}/{remaining=**} {
+      allow list: if owner(uid) && folder in ['profile','receipts','attachments'];
+    }
+    match /users/{uid}/{folder} {
+      match /{hash} {
+      allow get: if owner(uid) && folder in ['profile','receipts','attachments'];
+      allow create, update: if owner(uid) && active(uid) && folder in ['profile','receipts','attachments']
+        && hash.matches('[a-f0-9]{64}') && request.resource.size > 0 && request.resource.size <= 10000000
+        && request.resource.contentType in ['image/jpeg','image/png','image/webp','application/pdf','text/plain','application/octet-stream']
+        && (folder != 'profile' || request.resource.contentType in ['image/jpeg','image/png','image/webp'])
+        && request.resource.metadata.ownerUid == uid && request.resource.metadata.sha256 == hash;
+      allow delete: if owner(uid) && folder in ['profile','receipts','attachments'];
+      }
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}
