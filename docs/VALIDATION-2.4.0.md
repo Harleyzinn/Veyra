@@ -23,3 +23,6 @@ Certificado SHA-256: `8595f5acf3676e236dd32198a08e71bf5d04d875697d395f5bccd6b7a4
 ## Limites
 
 Revisão em emulador, sem certificação Play Protect/Play Integrity ou teste em aparelho físico. Firebase e protocolo de sincronização não foram alterados; segue gratuito, com anexos locais. Exportação de imagem do gráfico não foi adicionada: CSV/PDF continuam exportando os lançamentos do relatório. As opções novas ficam no Android, em Gráficos da seleção; os gráficos antigos do resumo e do desktop permanecem disponíveis.
+## Publicação pública
+
+[Release v2.4.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.4.0) publicada do commit `4bc5203`. A API pública confirmou esta versão como mais recente, estável e sem rascunho. O APK foi baixado sem credenciais; hash igual ao arquivo local e ao digest do GitHub, com certificado original verificado. O atualizador usa essa mesma fonte; a instalação exige a confirmação normal do Android.
