@@ -19,13 +19,14 @@ internal fun financeMoney(minor:Long,currency:String="BRL",hidden:Boolean=false)
 object FinanceReportWriter {
     private fun cell(value:String):String {val guarded=if(value.trimStart(' ','\t','\r','\n').firstOrNull() in listOf('=','+','-','@'))"'"+value else value;return "\""+guarded.replace("\"","\"\"")+"\""}
     fun csv(entries:List<Item>,context:List<Item>):String=buildString{
-        append("\uFEFFData;Descrição;Tipo;Valor;Moeda;Categoria;Subcategoria;Conta;Cartão;Status;Vencimento;Competência;Pessoa;Tags;Observações\r\n")
-        entries.forEach{e->append(listOf(e.date,e.title,e.type,FinancialDomain.decimal(FinancialDomain.amount(e),FinancialDomain.currency(e)),FinancialDomain.currency(e),e.value("category"),e.value("subcategory"),context.firstOrNull{it.id==e.value("account")}?.title.orEmpty(),context.firstOrNull{it.id==e.value("card")}?.title.orEmpty(),FinancialDomain.status(e).name,e.value("dueDate"),e.value("competence"),e.value("person"),e.tags,e.notes).joinToString(";",transform=::cell));append("\r\n")}
+        val names=context.associate{it.id to it.title}
+        append("\uFEFFData;Descrição;Tipo;Valor;Moeda;Categoria;Subcategoria;Conta;Cartão;Status;Vencimento;Competência;Pessoa;Tags;Observações;Data de pagamento;Tipo de pagamento;Fatura;Versão financeira;Caixa legado\r\n")
+        entries.forEach{e->append(listOf(e.date,e.title,e.type,FinancialDomain.decimal(FinancialDomain.amount(e),FinancialDomain.currency(e)),FinancialDomain.currency(e),e.value("category"),e.value("subcategory"),names[e.value("account")].orEmpty(),names[e.value("card")].orEmpty(),FinancialDomain.status(e).name,e.value("dueDate"),e.value("competence"),e.value("person"),e.tags,e.notes,e.value("settledDate"),e.value("paymentType"),e.value("invoiceId"),e.value("financialVersion"),e.value("legacyCardCash")).joinToString(";",transform=::cell));append("\r\n")}
     }
-    fun pdf(context:Context,uri:Uri,title:String,summary:List<String>,entries:List<Item>){
+    fun pdf(context:Context,uri:Uri,title:String,summary:List<String>,entries:List<Item>,cashBasis:Boolean=false){
         val doc=PdfDocument()
         try{
-            val lines=summary+listOf("")+entries.map{"${it.date}  ${it.title.take(38)}  ${financeMoney(FinancialDomain.amount(it),FinancialDomain.currency(it))}  ${financeStatusLabel(FinancialDomain.status(it).name)}"}
+            val lines=summary+listOf("")+entries.map{"${if(cashBasis)FinancialDomain.bookedDate(it).toString()else it.date}  ${it.title.take(38)}  ${financeMoney(FinancialDomain.amount(it),FinancialDomain.currency(it))}  ${financeStatusLabel(FinancialDomain.status(it).name)}"}
             val chunks=lines.chunked(39).ifEmpty{listOf(emptyList())}
             chunks.forEachIndexed{index,chunk->
                 val page=doc.startPage(PdfDocument.PageInfo.Builder(595,842,index+1).create());val canvas=page.canvas

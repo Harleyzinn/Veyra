@@ -3,7 +3,7 @@ plugins { id("com.android.application"); kotlin("android"); id("org.jetbrains.ko
 if (file("google-services.json").isFile) apply(plugin = "com.google.gms.google-services")
 android {
     namespace = "app.veyra.android"; compileSdk = 35
-    defaultConfig { applicationId = "app.veyra.life"; minSdk = 26; targetSdk = 35; versionCode = 220; versionName = "2.2.0"; testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "app.veyra.life"; minSdk = 26; targetSdk = 35; versionCode = 230; versionName = "2.3.0"; testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true }
     buildTypes { getByName("release") { isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro") } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

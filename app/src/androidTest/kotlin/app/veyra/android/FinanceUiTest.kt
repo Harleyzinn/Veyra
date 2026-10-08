@@ -22,7 +22,7 @@ class FinanceUiTest {
     private var prepared=false
     private var originalPreferences=emptyMap<String,String>()
     private val changedPreferences=mapOf("name" to "Teste", "lock" to "", "financeLock" to "Não", "home" to "tasks,balance,weather,habits,focus,favorites",
-        "financeHidden" to "Não", "financeCurrency" to "BRL", "recentFinanceAccount" to "", "recentExpenseCategory" to "Alimentação", "recentIncomeCategory" to "Salário", "financeNotifications" to "Não", "financialMigrationVersion" to "3")
+        "financeHidden" to "Não", "financeCurrency" to "BRL", "financialDay" to "1", "recentFinanceAccount" to "", "recentExpenseCategory" to "Alimentação", "recentIncomeCategory" to "Salário", "financeNotifications" to "Não", "financialMigrationVersion" to "3")
 
     @Before fun isolateLocalFinance(){
         Assume.assumeTrue("UI regression tests use the guest workspace only",WorkspaceIdentity.activeUid(context)==null)
@@ -67,7 +67,21 @@ class FinanceUiTest {
         device.wait(Until.findObject(selector),timeout) ?: throw AssertionError("Element not found: $selector")
     private fun hideKeyboard(){if(device.hasObject(By.pkg(Pattern.compile(".*inputmethod.*"))))device.pressBack();SystemClock.sleep(250)}
     private fun scrollTo(selector:BySelector):UiObject2 {
-        repeat(12){device.findObject(selector)?.let{return it};device.swipe(device.displayWidth/2,device.displayHeight*3/4,device.displayWidth/2,device.displayHeight/3,20);SystemClock.sleep(300)}
+        // A short, slow drag avoids flinging past rows inside tall report cards.
+        for(down in listOf(true,false))repeat(30){
+            device.waitForIdle(1500)
+            var dragDown=down
+            try{device.findObject(selector)?.let{node->
+                val bounds=node.visibleBounds
+                val center=bounds.centerY()
+                if(!bounds.isEmpty && center in device.displayHeight/10..device.displayHeight*4/5)return node
+                if(!bounds.isEmpty)dragDown=center>device.displayHeight*4/5
+            }}catch(_:StaleObjectException){ }
+            val from=if(dragDown)device.displayHeight*2/3 else device.displayHeight/2
+            val to=if(dragDown)device.displayHeight/2 else device.displayHeight*2/3
+            device.swipe(device.displayWidth/2,from,device.displayWidth/2,to,60)
+        }
+        device.dumpWindowHierarchy(java.io.File("/sdcard/Download/android23-failure.xml"))
         return text(selector)
     }
     private fun awaitRecord(predicate:(Item)->Boolean):Item {
@@ -118,7 +132,19 @@ class FinanceUiTest {
         WorkspaceStore(context).use{it.saveAll(listOf(account,card,buy))}
         ActivityScenario.launch(MainActivity::class.java).use{
             goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Cartões")).click()
-            scrollTo(By.text("Registrar pagamento da fatura")).click()
+            repeat(3){
+                if(!device.hasObject(By.text("Registrar pagamento"))){
+                    val button=scrollTo(By.text("Registrar pagamento da fatura"))
+                    SystemClock.sleep(500)
+                    val bounds=button.visibleBounds
+                    device.click(bounds.centerX(),bounds.centerY())
+                    device.wait(Until.hasObject(By.text("Registrar pagamento")),4_000)
+                }
+            }
+            if(!device.hasObject(By.text("Registrar pagamento"))){
+                device.takeScreenshot(java.io.File("/sdcard/Download/partial23-failure.png"))
+                device.dumpWindowHierarchy(java.io.File("/sdcard/Download/partial23-failure.xml"))
+            }
             text(By.text("Registrar pagamento"))
             val fields=device.findObjects(By.clazz("android.widget.EditText"));Assert.assertEquals(2,fields.size)
             fields[0].text="33,33";hideKeyboard();device.takeScreenshot(java.io.File("/sdcard/Download/veyra-partial-2.1.png"));text(By.text("Confirmar registro")).click()
@@ -169,6 +195,72 @@ class FinanceUiTest {
             Assert.assertTrue(device.hasObject(By.textContains("Não há exemplos misturados")))
             WorkspaceStore(context).use{store->Assert.assertTrue(store.all().none{it.type in FinancialDomain.transactionTypes && it.deletedAt==0L})}
         }
+    }
+
+    @Test fun reportsUseActualPaymentDateAndOfferOnlySelectedTotals(){
+        val today=java.time.LocalDate.now()
+        val expense=FinancialDomain.normalize(Item(id="report23-$token",type="expense",title="Pagamento de outro mês $token",date=today.minusMonths(1).withDayOfMonth(1).toString(),fields=mapOf("amountMinor" to "4200","currency" to "BRL","status" to "paid","settledDate" to today.toString())))
+        WorkspaceStore(context).use{store->
+            store.save(expense)
+            val rows=store.financeWindow(today.withDayOfMonth(1),today.withDayOfMonth(today.lengthOfMonth()))
+            Assert.assertEquals(1,app.veyra.feature.finance.FinanceReports.select(rows,today.withDayOfMonth(1),today.withDayOfMonth(today.lengthOfMonth()),"BRL",app.veyra.feature.finance.ReportBasis.CASH).entries.size)
+        }
+        ActivityScenario.launch(MainActivity::class.java).use{
+            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Relatórios")).click()
+            scrollTo(By.text("Analisar: Gastos registrados")).click();text(By.text("Fluxo de caixa")).click()
+            text(By.text("Analisar: Fluxo de caixa"))
+            scrollTo(By.text("1 registro selecionado"))
+            SystemClock.sleep(500)
+            device.takeScreenshot(java.io.File("/sdcard/Download/android23-report-count.png"))
+            device.dumpWindowHierarchy(java.io.File("/sdcard/Download/android23-report-count.xml"))
+            scrollTo(By.textContains("Saídas pagas:"))
+            Assert.assertTrue(device.findObject(By.textContains("Saídas pagas:")).text.contains("42,00"))
+            SystemClock.sleep(500)
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-report-2.3.png"))
+            device.dumpWindowHierarchy(java.io.File("/sdcard/Download/android23-report-values.xml"))
+            val output=FinanceReportWriter.csv(listOf(expense),listOf(expense))
+            Assert.assertTrue(output.contains("Data de pagamento"));Assert.assertTrue(output.contains(today.toString()))
+            val pdf=java.io.File(context.cacheDir,"report23-$token.pdf")
+            try{
+                FinanceReportWriter.pdf(context,android.net.Uri.fromFile(pdf),"Relatório selecionado",listOf("Entradas: R$ 0,00","Saídas: R$ 42,00"),listOf(expense),true)
+                Assert.assertTrue(pdf.length()>100)
+                Assert.assertEquals("%PDF",pdf.inputStream().use{stream->String(ByteArray(4).also{stream.read(it)},Charsets.US_ASCII)})
+            }finally{pdf.delete()}
+            scrollTo(By.textContains("PDF"))
+            Assert.assertTrue(device.hasObject(By.textContains("CSV")))
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-report-2.3.png"))
+        }
+    }
+
+    @Test fun upcomingSummaryShowsRemainingInvoiceAndKeepsOtherCurrenciesOut(){
+        val today=java.time.LocalDate.now()
+        val card=FinancialDomain.normalize(Item(id="agenda-card23-$token",type="card",title="Cartão agenda $token",fields=mapOf("closing" to "10","due" to "20","limitMinor" to "500000","currency" to "BRL")))
+        val due=today.plusDays(2)
+        val purchase=FinancialDomain.normalize(Item(id="agenda-buy23-$token",type="expense",title="Compra da fatura",date=today.toString(),fields=mapOf("amountMinor" to "30000","card" to card.id,"currency" to "BRL","dueDate" to due.toString(),"status" to "pending")))
+        val payment=FinancialDomain.normalize(Item(id="agenda-pay23-$token",type="expense",title="Parcela paga",date=today.toString(),fields=mapOf("amountMinor" to "10000","card" to card.id,"currency" to "BRL","invoiceId" to "invoice:${card.id}:$due","paymentType" to "card_payment","status" to "paid")))
+        val foreign=FinancialDomain.normalize(Item(id="agenda-usd23-$token",type="expense",title="Dólar não misturado $token",date=today.minusDays(1).toString(),fields=mapOf("amountMinor" to "9900","currency" to "USD","status" to "pending")))
+        WorkspaceStore(context).use{it.saveAll(listOf(card,purchase,payment,foreign))}
+        ActivityScenario.launch(MainActivity::class.java).use{
+            goFinance();scrollTo(By.text("Vencimentos em foco"))
+            scrollTo(By.textContains("1 pendência"));Assert.assertFalse(device.hasObject(By.text(foreign.title)))
+            Assert.assertTrue(device.hasObject(By.textContains("200,00")))
+            SystemClock.sleep(500)
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-agenda-2.3.png"))
+        }
+    }
+
+    @Test fun notesCanSortByTitleWhileSearchRemainsApplied(){
+        val a=Item(id="notes23-a-$token",type="note",title="Alfa $token",createdAt=1)
+        val z=a.copy(id="notes23-z-$token",title="Zeta $token",createdAt=2)
+        WorkspaceStore(context).use{it.saveAll(listOf(a,z))}
+        try{ActivityScenario.launch(MainActivity::class.java).use{
+            val tabs=device.wait(Until.findObjects(By.text("Notas")),30_000)
+            tabs.maxBy{it.visibleBounds.centerY()}.click()
+            text(By.clazz("android.widget.EditText")).text=token;hideKeyboard()
+            scrollTo(By.text("Ordenar notas: Mais recentes")).click();text(By.text("Título")).click()
+            scrollTo(By.text(z.title));Assert.assertTrue(device.hasObject(By.text(a.title)))
+            Assert.assertTrue(device.findObject(By.text(a.title)).visibleBounds.top<device.findObject(By.text(z.title)).visibleBounds.top)
+        }}finally{WorkspaceStore(context).use{it.saveAll(listOf(a,z).map{item->item.copy(deletedAt=System.currentTimeMillis())})}}
     }
 
     @Test fun missingDeviceCredentialCannotUnlockFinancialData(){
