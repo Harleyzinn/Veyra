@@ -16,6 +16,8 @@ import {
   shell,
   screen,
   nativeImage,
+  powerMonitor,
+  nativeTheme,
 } from "electron";
 import { join, resolve, basename, sep } from "node:path";
 import {
@@ -31,6 +33,8 @@ import { SecureFiles, Vault, sha } from "./vault";
 import { FirebaseClient, FirebaseConfig, SyncEngine } from "./firebase";
 import { systemGoogle } from "./google-login";
 import { DesktopUpdater } from "./updater";
+import { VeyraGlassWindows } from "./glass";
+import { isPanelRole, panelSpecs } from "../shared/glass";
 import {
   Item,
   Snapshot,
@@ -71,12 +75,13 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
 ]);
-const version = "3.0.1";
+const version = "3.1.0";
 let files: SecureFiles,
   vault: Vault,
   client: FirebaseClient,
   engine: SyncEngine,
   updater: DesktopUpdater;
+let glass: VeyraGlassWindows | undefined;
 let quitting = false,
   tray: Tray | null = null;
 const windows = new Map<string, BrowserWindow>();
@@ -138,6 +143,7 @@ function bounds(role: string) {
     : defaults;
 }
 function openWindow(role = "main") {
+  if (role === "notes") role = "widget-notes";
   const old = windows.get(role);
   if (old && !old.isDestroyed()) {
     old.show();
@@ -161,8 +167,10 @@ function openWindow(role = "main") {
       sandbox: true,
       webSecurity: true,
     },
+    ...(isPanelRole(role) && glass ? glass.options(role) : {}),
   });
   windows.set(role, w);
+  if (isPanelRole(role)) glass?.attach(role, w);
   w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   w.webContents.on("will-navigate", (event, url) => {
     if (!url.startsWith("veyra://app/")) event.preventDefault();
@@ -187,8 +195,10 @@ function openWindow(role = "main") {
         });
     }, 600);
   };
-  w.on("resize", saveBounds);
-  w.on("move", saveBounds);
+  if (!isPanelRole(role)) {
+    w.on("resize", saveBounds);
+    w.on("move", saveBounds);
+  }
   void w.loadURL("veyra://app/index.html#" + role);
   return w;
 }
@@ -211,6 +221,31 @@ function setupTray() {
       { label: "Meu dia", click: () => command("day") },
       { label: "Sincronizar", click: () => void engine.sync() },
       { type: "separator" },
+      { label: "Mini Dashboard", click: () => openWindow("mini") },
+      { label: "Focus Overlay", click: () => openWindow("widget-focus") },
+      { label: "Veyra Dock", click: () => openWindow("dock") },
+      {
+        label: "Widgets",
+        submenu: Object.entries(panelSpecs)
+          .filter(([role]) => role.startsWith("widget-"))
+          .map(([role, spec]) => ({
+            label: spec.title,
+            click: () => openWindow(role),
+          })),
+      },
+      { label: "Ocultar todos os painéis", click: () => glass?.all("hide") },
+      {
+        label: "Mostrar todos os painéis",
+        click: () => {
+          glass?.all("restore");
+          glass?.all("show");
+        },
+      },
+      {
+        label: "Recuperar painéis / desativar click-through",
+        click: () => glass?.all("recover"),
+      },
+      { type: "separator" },
       {
         label: "Sair",
         click: () => {
@@ -228,9 +263,28 @@ const defaultShortcuts = {
   expense: "CommandOrControl+Alt+G",
   note: "CommandOrControl+Alt+N",
   focus: "CommandOrControl+Alt+F",
+  recover: "CommandOrControl+Shift+R",
 };
+let registeredShortcuts: Record<string, string> = {};
+function applyDesktopTheme() {
+  const theme = desktop().theme || vault.preferences().theme;
+  nativeTheme.themeSource =
+    theme === "dark" || theme === "Escuro"
+      ? "dark"
+      : theme === "light" || theme === "Claro"
+        ? "light"
+        : "system";
+}
 function shortcuts(value: Record<string, string>) {
-  const before = desktop().shortcuts || defaultShortcuts;
+  const before = registeredShortcuts;
+  if (
+    !value ||
+    Object.keys(value).some((name) => !Object.hasOwn(defaultShortcuts, name)) ||
+    Object.values(value).some(
+      (v) => typeof v !== "string" || !v || v.length > 100,
+    )
+  )
+    throw Error("Atalho inválido.");
   globalShortcut.unregisterAll();
   const registered: string[] = [];
   try {
@@ -239,28 +293,33 @@ function shortcuts(value: Record<string, string>) {
         throw Error("Atalho inválido.");
       if (
         !globalShortcut.register(accelerator, () =>
-          name === "capture"
-            ? command("capture", "quick")
-            : name === "focus"
-              ? command("focus", "widget-focus")
-              : command("new:" + name, "quick"),
+          name === "recover"
+            ? glass?.all("recover")
+            : name === "capture"
+              ? command("capture", "quick")
+              : name === "focus"
+                ? command("focus", "widget-focus")
+                : command("new:" + name, "quick"),
         )
       )
         throw Error(`O atalho ${accelerator} já está em uso.`);
       registered.push(accelerator);
     }
+    registeredShortcuts = { ...value };
   } catch (e) {
     registered.forEach((s) => globalShortcut.unregister(s));
     for (const [name, key] of Object.entries(before))
       globalShortcut.register(key as string, () =>
-        command(
-          name === "capture"
-            ? "capture"
-            : name === "focus"
-              ? "focus"
-              : "new:" + name,
-          name === "focus" ? "widget-focus" : "quick",
-        ),
+        name === "recover"
+          ? glass?.all("recover")
+          : command(
+              name === "capture"
+                ? "capture"
+                : name === "focus"
+                  ? "focus"
+                  : "new:" + name,
+              name === "focus" ? "widget-focus" : "quick",
+            ),
       );
     throw e;
   }
@@ -294,6 +353,18 @@ async function switchVault(uid: string | null) {
       ]);
   }
   engine.start();
+  applyDesktopTheme();
+  if (glass && !qa)
+    try {
+      shortcuts({ ...defaultShortcuts, ...desktop().shortcuts });
+      desktopSave({ panelRecoveryAvailable: true, shortcutWarning: "" });
+    } catch {
+      desktopSave({
+        panelRecoveryAvailable: false,
+        shortcutWarning: "Um atalho está em uso. Ajuste em Configurações.",
+      });
+    }
+  glass?.reapply();
   changed();
 }
 function snapshot(month?: string, days?: number): Snapshot {
@@ -484,6 +555,12 @@ async function refreshWeather() {
 const allowedMethods = new Set([
   "startup",
   "closeWindow",
+  "panelInfo",
+  "panelUpdate",
+  "panelGesture",
+  "panelMenu",
+  "panelsAll",
+  "capture",
   "navigate",
   "snapshot",
   "search",
@@ -509,6 +586,7 @@ const allowedMethods = new Set([
   "focusStart",
   "focusPause",
   "focusStop",
+  "focusComplete",
   "openWindow",
   "shortcuts",
   "clipboard",
@@ -544,6 +622,28 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
     case "closeWindow":
       owner.close();
       return true;
+    case "panelInfo":
+      return glass!.info(owner);
+    case "panelUpdate":
+      return glass!.update(owner, value);
+    case "panelGesture":
+      return glass!.gesture(owner, value);
+    case "panelMenu":
+      return glass!.menu(owner, value === true);
+    case "panelsAll":
+      return glass!.all(String(value));
+    case "capture": {
+      if (value?.id) {
+        const item = vault.item(String(value.id));
+        if (!item) throw Error("Registro não encontrado.");
+        command("edit:" + item.id, "quick");
+      } else {
+        const type = String(value?.type || "task");
+        if (!/^[a-z_]{1,40}$/.test(type)) throw Error("Tipo inválido.");
+        command("new:" + type, "quick");
+      }
+      return true;
+    }
     case "navigate": {
       if (
         ![
@@ -691,11 +791,14 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
         "miniWidgets",
         "kanbanColumns",
         "lastPage",
+        "reducedEffects",
       ]);
       if (Object.keys(value).some((k) => !allowed.has(k)))
         throw Error("Configuração não autorizada.");
       desktopSave(value);
       if ("keepTray" in value) setupTray();
+      if ("theme" in value) applyDesktopTheme();
+      if ("reducedEffects" in value) glass?.reapply();
       return true;
     }
     case "google": {
@@ -843,9 +946,13 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
     case "focusStop":
       finishFocus(false);
       return true;
+    case "focusComplete":
+      finishFocus(true);
+      return true;
     case "openWindow": {
       const role = String(value);
       if (
+        !isPanelRole(role) &&
         ![
           "main",
           "mini",
@@ -864,8 +971,11 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
       return true;
     }
     case "shortcuts":
-      shortcuts(value);
-      desktopSave({ shortcuts: value });
+      shortcuts({ ...defaultShortcuts, ...value });
+      desktopSave({
+        shortcuts: { ...defaultShortcuts, ...value },
+        panelRecoveryAvailable: true,
+      });
       return true;
     case "clipboard": {
       if (!desktop().clipboard)
@@ -1084,6 +1194,7 @@ app
       readFileSync(join(resources(), "update-public.pem"), "utf8"),
     );
     await switchVault(client.user()?.uid || null);
+    glass = new VeyraGlassWindows(windows, desktop, desktopSave, openWindow);
     protocol.handle("veyra", (request) => {
       const url = new URL(request.url);
       if (url.hostname !== "app") return new Response("", { status: 403 });
@@ -1122,13 +1233,30 @@ app
     setupTray();
     if (!qa)
       try {
-        shortcuts(desktop().shortcuts || defaultShortcuts);
+        shortcuts({ ...defaultShortcuts, ...desktop().shortcuts });
+        desktopSave({ panelRecoveryAvailable: true });
       } catch {
         desktopSave({
           shortcutWarning: "Um atalho está em uso. Ajuste em Configurações.",
+          panelRecoveryAvailable: false,
         });
       }
     openWindow();
+    glass.all("restore");
+    const displaysChanged = () => {
+      glass?.all("recover");
+    };
+    screen.on("display-removed", displaysChanged);
+    screen.on("display-metrics-changed", displaysChanged);
+    nativeTheme.on("updated", () => {
+      glass?.reapply();
+      changed();
+    });
+    powerMonitor.on("resume", () => {
+      glass?.reapply();
+      void engine.sync();
+      changed();
+    });
     setInterval(() => {
       const focus = desktop().focus;
       if (focus?.active && !focus.paused && focus.deadline <= Date.now())
@@ -1184,6 +1312,7 @@ app.on("window-all-closed", () => {
 });
 app.on("before-quit", () => {
   quitting = true;
+  glass?.shutdown();
   engine?.stop();
   googleAttempt?.cancel();
   globalShortcut.unregisterAll();

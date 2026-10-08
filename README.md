@@ -4,7 +4,7 @@ Sua vida, em um só lugar. Android nativo em Kotlin/Jetpack Compose e aplicativo
 
 ## Windows + celular
 
-Baixe o [instalador Veyra Life Desktop 3.0.1](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v3.0.1) e o [APK Android 2.2.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md).
+Baixe o [instalador Veyra Life Desktop 3.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v3.1.0) e o [APK Android 2.2.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 3.1.0](docs/VALIDATION-DESKTOP-3.1.0.md).
 
 O Android 2.2 recebe mudanças remotas automaticamente enquanto o app está ativo e registra presença dos dispositivos. Nenhum módulo ou banco Android foi reorganizado. O instalador Windows não tem certificado Authenticode comercial; o atualizador usa assinatura Ed25519 e SHA-256.
 
@@ -66,4 +66,3 @@ O script gera a chave local na pasta privada e ignorada `.signing`, alinha o APK
 `app` contém Compose e integrações Android. `core:model` preserva os modelos; `core:data` gerencia Room, índice financeiro, busca FTS, auditoria, revisões, outbox e isolamento físico por UID. `feature:finance` contém os motores JVM de dinheiro, recorrências, cartões, previsões e indicadores. `core:cloud` contém autenticação, sincronização e anexos Firebase; `core:designsystem`, o tema. A [auditoria e migração](docs/FINANCE-ARCHITECTURE.md) explica as mudanças. A documentação anterior foi preservada em [BASE-README.md](docs/BASE-README.md).
 
 Clima: [Open-Meteo](https://open-meteo.com/), geocodificação GeoNames. Manrope: licença SIL Open Font License em [Manrope-OFL.txt](docs/Manrope-OFL.txt). Sem anúncios, analytics ou conta obrigatória. Dados locais e backups continuam sujeitos às condições descritas no guia.
-

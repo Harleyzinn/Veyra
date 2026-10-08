@@ -40,7 +40,12 @@ Compartilhamento futuro deve usar uma coleção de espaços e membros com papéi
 
 Desktop e Android possuem canais separados. O atualizador desktop aceita apenas tags estáveis `desktop-v*`, URL do repositório fixado, versão maior, manifesto Ed25519 e hash do binário. A chave privada fica fora do Git. O script de release verifica o commit publicado e os hashes dos uploads antes de tornar a release pública. A release desktop usa `make_latest=false` para preservar o atualizador APK existente.
 
-## Limites técnicos
+## Janelas auxiliares 3.1
+
+`VeyraGlassWindows` centraliza criação, região nativa arredondada, Acrylic condicional, limites por monitor e persistência. `VeyraGlassPanel` compartilha controles, menu, modos, regiões de arraste e resize. O processo principal valida papel da janela, origem/UID e ações fixas; resize consulta o cursor nativo e não permite execução de APIs arbitrárias pelo renderizador. Click-through exige atalho de recuperação realmente registrado. A captura não aceita click-through.
+
+Transparência usa janela sem frame e fundo transparente, sem captura do desktop. Como o Electron não suporta resize nativo estável nessas janelas transparentes, regiões próprias chamam `setBounds`. A região da janela recorta os cantos, inclusive no hit-test; Acrylic usa somente a API integrada no Windows compatível. O Dock reúne módulos em um renderizador; painéis separados mantêm processos separados e custo de memória correspondente. [Uso, compatibilidade e medições](DESKTOP-GLASS.md).
+
+## Limites de dados
 
 O cache criptografado de sql.js é exportado inteiro por transação; os testes desta versão validam recuperação e integridade, não garantem latência constante com dezenas de milhares de anexos. Busca e movimentos financeiros são paginados; listas de widgets são limitadas e o snapshot preserva texto completo para evitar truncar notas ao concluir/favoritar um registro. Escalabilidade maior pode exigir SQLite nativo criptografado e assinatura comercial Windows, sem alterar o protocolo remoto.
-

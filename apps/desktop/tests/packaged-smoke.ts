@@ -19,7 +19,7 @@ async function run() {
     const page = await app.firstWindow();
     await page.waitForSelector(".sidebar", { timeout: 30000 });
     const snapshot = await page.evaluate(() => window.veyra.call("snapshot"));
-    assert.equal(snapshot.version, "3.0.1");
+    assert.equal(snapshot.version, "3.1.0");
     assert(snapshot.configured);
     assert(await app.evaluate(({ app }) => app.isPackaged));
     assert.equal(

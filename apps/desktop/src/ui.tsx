@@ -45,6 +45,7 @@ export function Button({
   disabled = false,
   title = "",
   type = "button",
+  "aria-label": ariaLabel,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
@@ -52,6 +53,7 @@ export function Button({
   disabled?: boolean;
   title?: string;
   type?: "button" | "submit";
+  "aria-label"?: string;
 }) {
   return (
     <button
@@ -60,6 +62,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={ariaLabel}
     >
       {children}
     </button>

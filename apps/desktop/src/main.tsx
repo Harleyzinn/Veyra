@@ -40,6 +40,7 @@ import {
   today,
   addDays,
   money,
+  amount,
 } from "../shared/model";
 import { catalog } from "../shared/catalog";
 import {
@@ -68,7 +69,12 @@ import {
   habitStats,
 } from "./Productivity";
 import { Settings } from "./Settings";
+import { VeyraGlassPanel } from "./Glass";
+import { isPanelRole } from "../shared/glass";
 import "./styles.css";
+import "./glass.css";
+if (isPanelRole(location.hash.slice(1)))
+  document.documentElement.dataset.floating = "true";
 const navigation = [
   ["home", "Central", LayoutDashboard],
   ["day", "Meu dia", Sun],
@@ -92,6 +98,9 @@ const widgets = [
   ["clock", "Hora e data"],
   ["insights", "Insights"],
   ["quick", "Captura rápida"],
+  ["focus", "Foco"],
+  ["spending", "Gastos do dia"],
+  ["shortcuts", "Atalhos"],
 ] as const;
 const defaultLayout = [
   { id: "finance", size: "wide" },
@@ -121,12 +130,13 @@ function App() {
     item?: Item;
     type: string;
     uid?: string | null;
-  } | null>(role === "quick" ? { type: "task" } : null);
+  } | null>(null);
   const setEditor = (value: { item?: Item; type: string } | null) =>
     setEditorState(value ? { ...value, uid: data?.uid } : null);
   const [palette, setPalette] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   const [toast, setToast] = useState("");
+  const [quickClosing, setQuickClosing] = useState(false);
   const [clipboard, setClipboard] = useState("");
   const [dropPath, setDropPath] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -164,8 +174,15 @@ function App() {
       setOnboarding(true);
     if (data && data.desktop.openDay && role === "main") setPage("day");
   }, [data?.uid]);
-  const create = (type: string) => setEditor({ type });
+  const create = (type: string) => {
+    if (isPanelRole(role) && role !== "quick") void api("capture", { type });
+    else setEditor({ type });
+  };
   const open = async (item: Item) => {
+    if (isPanelRole(role) && role !== "quick") {
+      await api("capture", { id: item.id });
+      return;
+    }
     const full: Item = await api("item", item.id);
     setEditor({ type: item.type, item: full || item });
   };
@@ -174,8 +191,12 @@ function App() {
     else void api("navigate", next);
   };
   const runCommand = useCallback((command: string) => {
-    if (command.startsWith("new:")) setEditor({ type: command.slice(4) });
-    else if (command === "capture") setEditor({ type: "task" });
+    if (command.startsWith("edit:"))
+      void api("item", command.slice(5)).then((item) => {
+        if (item) setEditor({ type: item.type, item });
+      });
+    else if (command.startsWith("new:")) setEditor({ type: command.slice(4) });
+    else if (command === "capture") setEditor(null);
     else if (command === "palette") setPalette(true);
     else setPage(command);
   }, []);
@@ -206,20 +227,26 @@ function App() {
   useEffect(() => {
     if (!data) return;
     const raw = data.desktop.theme || data.preferences.theme || "system";
-    const theme =
-      raw === "Claro" || raw === "light"
-        ? "light"
-        : raw === "Escuro" || raw === "dark"
-          ? "dark"
-          : matchMedia("(prefers-color-scheme: dark)").matches
+    const media = matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = () => {
+      const theme =
+        raw === "Claro" || raw === "light"
+          ? "light"
+          : raw === "Escuro" || raw === "dark"
             ? "dark"
-            : "light";
-    document.documentElement.dataset.theme = theme;
+            : media.matches
+              ? "dark"
+              : "light";
+      document.documentElement.dataset.theme = theme;
+    };
+    applyTheme();
+    media.addEventListener("change", applyTheme);
     document.documentElement.dataset.accent = data.desktop.accent || "violet";
     document.documentElement.dataset.density =
       data.desktop.density || "comfortable";
     document.documentElement.style.fontSize =
       (Number(data.desktop.scale || 100) / 100) * 14 + "px";
+    return () => media.removeEventListener("change", applyTheme);
   }, [
     data?.desktop.theme,
     data?.desktop.accent,
@@ -273,7 +300,10 @@ function App() {
       all={data.items}
       onClose={() => {
         setEditor(null);
-        if (role === "quick") void api("closeWindow");
+        if (role === "quick") {
+          setQuickClosing(true);
+          setTimeout(() => void api("closeWindow"), 130);
+        }
       }}
       onSaved={() => {
         setToast("Registro salvo.");
@@ -281,119 +311,94 @@ function App() {
       }}
     />
   );
-  if (role === "quick")
-    return (
-      <div className="quick-window">
-        <div className="brand-line">
-          <span className="brand-mark">v</span>
-          <strong>Captura rápida</strong>
-        </div>
-        {editorNode || (
-          <Empty title="Pronto para registrar" onAdd={() => create("task")} />
-        )}
-      </div>
+  if (isPanelRole(role)) {
+    const mode = data.desktop.panels?.[role]?.mode || "normal";
+    const widget = (id: string) => (
+      <Widget
+        key={id}
+        id={id}
+        data={data}
+        open={open}
+        create={create}
+        go={navigate}
+        cash={cash}
+        complete={complete}
+      />
     );
-  if (role === "mini" || role.startsWith("widget-"))
+    const modules = data.desktop.miniWidgets || [
+      "clock",
+      "weather",
+      "tasks",
+      "calendar",
+      "finance",
+      "habits",
+      "focus",
+      "shortcuts",
+    ];
     return (
-      <div className="mini-window">
-        <div className="mini-header">
-          <span className="brand-mark">v</span>
-          <strong>
-            {role === "mini"
-              ? "Seu Veyra"
-              : widgets.find(([id]) => role === "widget-" + id)?.[1] || "Foco"}
-          </strong>
-          <IconButton
-            label="Abrir janela principal"
-            onClick={() => void api("openWindow", "main")}
-          >
-            <ArrowUpRight size={16} />
-          </IconButton>
-        </div>
-        {role === "widget-focus" ? (
-          <CompactFocus data={data} />
-        ) : role === "mini" ? (
+      <VeyraGlassPanel role={role} data={data} exiting={quickClosing}>
+        {role === "quick" ? (
+          <QuickLanding
+            choose={(type, title) =>
+              setEditor({
+                type,
+                item: title ? createItem(type, { title }) : undefined,
+              })
+            }
+            editor={!!editor}
+          />
+        ) : role === "widget-focus" || role === "widget-timer" ? (
+          <CompactFocus data={data} stopwatch={role === "widget-timer"} />
+        ) : role === "mini" || role === "dock" ? (
           <>
-            {(
-              data.desktop.miniWidgets || [
-                "clock",
-                "weather",
-                "finance",
-                "tasks",
-                "calendar",
-              ]
-            ).map((id: string) => (
-              <Widget
-                key={id}
-                id={id}
-                data={data}
-                open={open}
-                create={create}
-                go={navigate}
-                cash={cash}
-                complete={complete}
-              />
-            ))}
-            <details>
-              <summary>Escolher informações</summary>
-              {widgets
-                .filter(([id]) => id !== "quick")
-                .map(([id, title]) => (
-                  <label className="toggle" key={id}>
-                    <input
-                      type="checkbox"
-                      checked={(
-                        data.desktop.miniWidgets || [
-                          "clock",
-                          "weather",
-                          "finance",
-                          "tasks",
-                          "calendar",
-                        ]
-                      ).includes(id)}
-                      onChange={(e) => {
-                        const current = data.desktop.miniWidgets || [
-                          "clock",
-                          "weather",
-                          "finance",
-                          "tasks",
-                          "calendar",
-                        ];
-                        void api("desktop", {
-                          miniWidgets: e.target.checked
-                            ? [...current, id]
-                            : current.filter((v: string) => v !== id),
-                        });
-                      }}
-                    />
-                    {title}
-                  </label>
+            <div className={role === "dock" ? "glass-dock" : "glass-modules"}>
+              {modules
+                .slice(0, mode === "compact" ? 3 : 10)
+                .map((id: string) => (
+                  <FloatingModule
+                    key={id}
+                    id={id}
+                    data={data}
+                    cash={cash}
+                    go={navigate}
+                    complete={complete}
+                  />
                 ))}
+            </div>
+            <details className="glass-module-picker">
+              <summary>Escolher informações</summary>
+              {widgets.map(([id, title]) => (
+                <label className="toggle" key={id}>
+                  <input
+                    type="checkbox"
+                    checked={modules.includes(id)}
+                    onChange={(e) =>
+                      void api("desktop", {
+                        miniWidgets: e.target.checked
+                          ? [...modules, id]
+                          : modules.filter((v: string) => v !== id),
+                      })
+                    }
+                  />
+                  {title}
+                </label>
+              ))}
             </details>
           </>
+        ) : mode === "micro" ? (
+          <MicroWidget role={role} data={data} cash={cash} />
         ) : (
-          <Widget
-            id={role.slice(7)}
-            data={data}
-            open={open}
-            create={create}
-            go={navigate}
-            cash={cash}
-            complete={complete}
-          />
+          widget(role.slice(7))
         )}
-        <Button kind="primary" onClick={() => create("task")}>
-          <Plus size={15} />
-          Capturar
-        </Button>
         {editorNode}
         {toast && (
           <div className="toast" role="status">
             {toast}
           </div>
         )}
-      </div>
+      </VeyraGlassPanel>
     );
+  }
   return (
     <div
       className="app"
@@ -1149,6 +1154,38 @@ function Widget({
       </Panel>
     );
   }
+  if (id === "focus") return <CompactFocus data={data} />;
+  if (id === "spending")
+    return (
+      <Panel title="Gastos de hoje">
+        <strong className="daily-spending">
+          {cash(
+            items
+              .filter(
+                (i) =>
+                  i.type === "expense" &&
+                  i.date === today() &&
+                  ["paid", "Pago", ""].includes(i.fields.status || ""),
+              )
+              .reduce((total, i) => total + amount(i), 0),
+          )}
+        </strong>
+      </Panel>
+    );
+  if (id === "shortcuts")
+    return (
+      <Panel title="Por perto">
+        <div className="capture-options">
+          <Button onClick={() => void api("openWindow", "quick")}>
+            Capturar
+          </Button>
+          <Button onClick={() => void api("openWindow", "widget-focus")}>
+            Foco
+          </Button>
+          <Button onClick={() => go("day")}>Meu dia</Button>
+        </div>
+      </Panel>
+    );
   if (id === "clock") return <Clock />;
   if (id === "insights")
     return (
@@ -1205,7 +1242,9 @@ function Widget({
 function Clock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
+    const timer = setInterval(() => {
+      if (!document.hidden) setNow(new Date());
+    }, 30000);
     return () => clearInterval(timer);
   }, []);
   return (
@@ -1224,6 +1263,346 @@ function Clock() {
         })}
       </p>
     </Panel>
+  );
+}
+function FloatingModule({
+  id,
+  data,
+  cash,
+  go,
+  complete,
+}: {
+  id: string;
+  data: Snapshot;
+  cash: (n: number) => string;
+  go: (page: string) => void;
+  complete: (i: Item) => void;
+}) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    if (id !== "clock") return;
+    const timer = setInterval(() => {
+      if (!document.hidden) setNow(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [id]);
+  const heading = (label: string, page?: string) => (
+    <header>
+      <span>{label}</span>
+      {page && (
+        <button aria-label={"Abrir " + label} onClick={() => go(page)}>
+          <ArrowUpRight size={14} />
+        </button>
+      )}
+    </header>
+  );
+  if (id === "focus")
+    return (
+      <section className="floating-tile tile-focus">
+        <CompactFocus data={data} />
+      </section>
+    );
+  if (id === "clock")
+    return (
+      <section className="floating-tile tile-clock glass-drag">
+        <strong>
+          {now.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </strong>
+        <span>
+          {now.toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+        </span>
+      </section>
+    );
+  if (id === "finance" || id === "spending")
+    return (
+      <section className="floating-tile">
+        {heading(
+          id === "finance" ? "Saldo disponível" : "Gastos de hoje",
+          "finance",
+        )}
+        <strong className="tile-value">
+          {cash(
+            id === "finance"
+              ? data.finance.balance
+              : data.items
+                  .filter(
+                    (i) =>
+                      i.type === "expense" &&
+                      i.date === today() &&
+                      (i.fields.currency || data.finance.currency) ===
+                        data.finance.currency &&
+                      ["paid", "Pago", ""].includes(i.fields.status || ""),
+                  )
+                  .reduce((n, i) => n + amount(i), 0),
+          )}
+        </strong>
+        <small>
+          {data.finance.currency} ·{" "}
+          {id === "finance"
+            ? "Suas contas, em equilíbrio"
+            : "Registros pagos de hoje"}
+        </small>
+      </section>
+    );
+  if (id === "tasks") {
+    const list = data.items
+      .filter((i) => i.type === "task" && !i.done)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return (
+      <section className="floating-tile">
+        {heading("Próximas tarefas", "tasks")}
+        {list.slice(0, 3).map((i) => (
+          <div className="tile-task" key={i.id}>
+            <button
+              aria-label={"Concluir " + i.title}
+              onClick={() => complete(i)}
+            >
+              <Check size={13} />
+            </button>
+            <span>{i.title}</span>
+          </div>
+        ))}
+        {!list.length && <p>Seu próximo passo cabe aqui.</p>}
+        <small>{list.length} tarefas abertas</small>
+      </section>
+    );
+  }
+  if (id === "calendar") {
+    const event = data.items
+      .filter((i) => i.type === "event" && i.date >= today())
+      .sort((a, b) =>
+        (a.date + (a.fields.time || "")).localeCompare(
+          b.date + (b.fields.time || ""),
+        ),
+      )[0];
+    return (
+      <section className="floating-tile">
+        {heading("Próximo compromisso", "calendar")}
+        <strong className="tile-text">
+          {event?.title || "Seu tempo está livre"}
+        </strong>
+        {event && (
+          <small>
+            {dateLabel(event.date)} · {event.fields.time || "Dia todo"}
+          </small>
+        )}
+      </section>
+    );
+  }
+  if (id === "weather") {
+    const city = data.items.find(
+      (i) => i.type === "city" && i.id === data.preferences.weatherCity,
+    );
+    let cache: any = {};
+    try {
+      cache = JSON.parse(city?.fields.cache || "{}");
+    } catch {}
+    const manual = data.preferences.weatherMode === "Manual";
+    const value = manual
+      ? (data.preferences.weatherTemperature || "24") + "°"
+      : cache.current
+        ? Math.round(cache.current.temperature_2m) + "°"
+        : "—";
+    return (
+      <section className="floating-tile tile-weather">
+        {heading(city?.title || "Seu horizonte")}
+        <div>
+          <Sun size={30} />
+          <strong className="tile-value">{value}</strong>
+          <span>
+            {manual
+              ? data.preferences.weatherCondition || "Meu clima"
+              : cache.current
+                ? "Previsão salva"
+                : "Escolha uma cidade"}
+          </span>
+          <button
+            aria-label="Abrir painel de clima"
+            onClick={() => void api("openWindow", "widget-weather")}
+          >
+            <ArrowUpRight size={14} />
+          </button>
+        </div>
+      </section>
+    );
+  }
+  if (id === "habits") {
+    const habits = data.items.filter((i) => i.type === "habit");
+    const done = habits.filter((h) =>
+      habitStats(data.items, h.id).dates.includes(today()),
+    ).length;
+    return (
+      <section className="floating-tile">
+        {heading("Pequenos hábitos", "habits")}
+        <strong className="tile-value">
+          {done}
+          <span> / {habits.length}</span>
+        </strong>
+        <small>Concluídos hoje · um dia de cada vez</small>
+      </section>
+    );
+  }
+  if (id === "notes") {
+    const note = data.items
+      .filter((i) => i.type === "note")
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+    return (
+      <section className="floating-tile">
+        {heading("Ideias por perto", "notes")}
+        <strong className="tile-text">
+          {note?.title || "Guarde sua próxima ideia"}
+        </strong>
+      </section>
+    );
+  }
+  if (id === "goals")
+    return (
+      <section className="floating-tile">
+        {heading("Seus próximos objetivos", "goals")}
+        <strong className="tile-text">
+          {data.items.find(
+            (i) => ["goal", "savings_goal"].includes(i.type) && !i.done,
+          )?.title || "Dê nome ao seu próximo passo"}
+        </strong>
+      </section>
+    );
+  if (id === "insights")
+    return (
+      <section className="floating-tile">
+        {heading("Uma perspectiva", "finance")}
+        <p>
+          {data.preferences.financeHidden === "yes" ||
+          data.preferences.financeHideValues === "yes"
+            ? "Valores financeiros ocultos."
+            : data.finance.insights[0] || "Seu histórico conta uma história."}
+        </p>
+      </section>
+    );
+  return (
+    <section className="floating-tile tile-shortcuts">
+      {heading("Por perto")}
+      <div>
+        <Button onClick={() => void api("openWindow", "quick")}>
+          <Plus size={14} />
+          Capturar
+        </Button>
+        <Button onClick={() => go("day")}>Meu dia</Button>
+      </div>
+    </section>
+  );
+}
+function QuickLanding({
+  choose,
+  editor,
+}: {
+  choose: (type: string, title: string) => void;
+  editor: boolean;
+}) {
+  const [text, setText] = useState("");
+  if (editor) return null;
+  const choices = [
+    ["task", "Tarefa", CheckSquare],
+    ["expense", "Gasto", Wallet],
+    ["income", "Entrada", ArrowUpRight],
+    ["note", "Nota", FileText],
+    ["event", "Evento", CalendarDays],
+  ] as const;
+  return (
+    <div className="glass-capture">
+      <div className="eyebrow">UMA IDEIA, UM SEGUNDO</div>
+      <h1>O que você quer registrar?</h1>
+      <p>Guarde agora. Organize no seu tempo.</p>
+      <div className="glass-capture-input">
+        <Search size={19} />
+        <input
+          autoFocus
+          aria-label="Digite uma ação"
+          placeholder="Digite uma ideia ou escolha uma ação…"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") choose("task", text);
+          }}
+        />
+        <kbd>↵</kbd>
+      </div>
+      <div className="glass-capture-choices">
+        {choices.map(([type, title, Icon], n) => (
+          <button key={type} onClick={() => choose(type, text)}>
+            <span>
+              <Icon size={21} />
+            </span>
+            <strong>{title}</strong>
+            <small>{n === 0 ? "Tire da cabeça" : "Registrar"}</small>
+            <ArrowUpRight size={16} />
+          </button>
+        ))}
+      </div>
+      <footer>
+        <span>Ctrl + Shift + Space</span>
+        <span>Esc para sair</span>
+      </footer>
+    </div>
+  );
+}
+function MicroWidget({
+  role,
+  data,
+  cash,
+}: {
+  role: string;
+  data: Snapshot;
+  cash: (n: number) => string;
+}) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    if (role !== "widget-clock") return;
+    const t = setInterval(() => {
+      if (!document.hidden) setNow(new Date());
+    }, 30000);
+    return () => clearInterval(t);
+  }, [role]);
+  let value = "";
+  let label = "";
+  if (role === "widget-finance") {
+    value = cash(data.finance.balance);
+    label = "Disponível";
+  }
+  if (role === "widget-clock") {
+    value = now.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    label = now.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  }
+  if (role === "widget-weather") {
+    const city = data.items.find(
+      (i) => i.type === "city" && i.id === data.preferences.weatherCity,
+    );
+    let cache: any = {};
+    try {
+      cache = JSON.parse(city?.fields.cache || "{}");
+    } catch {}
+    value =
+      data.preferences.weatherMode === "Manual"
+        ? (data.preferences.weatherTemperature || "24") + "°"
+        : cache.current
+          ? Math.round(cache.current.temperature_2m) + "°"
+          : "—";
+    label = city?.title || "Clima";
+  }
+  return (
+    <div className="glass-micro-summary glass-drag">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
   );
 }
 function Weather({ data }: { data: Snapshot }) {
@@ -1780,12 +2159,21 @@ function Modules({
     </>
   );
 }
-function CompactFocus({ data }: { data: Snapshot }) {
+function CompactFocus({
+  data,
+  stopwatch = false,
+}: {
+  data: Snapshot;
+  stopwatch?: boolean;
+}) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    if (!data.desktop.focus?.active || data.desktop.focus?.paused) return;
+    const timer = setInterval(() => {
+      if (!document.hidden) setTick((t) => t + 1);
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [data.desktop.focus?.active, data.desktop.focus?.paused]);
   const f = data.desktop.focus;
   const remaining = f?.active
     ? f.paused
@@ -1796,7 +2184,7 @@ function CompactFocus({ data }: { data: Snapshot }) {
     f?.active && f.mode === "Cronômetro" ? f.seconds - remaining : remaining;
   return (
     <div className="compact-focus" data-tick={tick}>
-      <span className="eyebrow">FOCO</span>
+      <span className="eyebrow">{stopwatch ? "CRONÔMETRO" : "FOCO"}</span>
       <div className="focus-clock">
         {String(Math.floor(left / 60)).padStart(2, "0")}:
         {String(left % 60).padStart(2, "0")}
@@ -1804,11 +2192,20 @@ function CompactFocus({ data }: { data: Snapshot }) {
       <p>{f?.active ? f.title : "Um tempo para o que importa."}</p>
       {f?.active ? (
         <div className="actions center">
-          <Button onClick={() => void api("focusPause")}>
+          <Button
+            aria-label={f.paused ? "Retomar foco" : "Pausar foco"}
+            onClick={() => void api("focusPause")}
+          >
             {f.paused ? <Play size={16} /> : <Pause size={16} />}
           </Button>
-          <Button onClick={() => void api("focusStop")}>
+          <Button aria-label="Parar foco" onClick={() => void api("focusStop")}>
             <Square size={15} />
+          </Button>
+          <Button
+            aria-label="Concluir foco"
+            onClick={() => void api("focusComplete")}
+          >
+            <Check size={15} />
           </Button>
         </div>
       ) : (
@@ -1817,8 +2214,8 @@ function CompactFocus({ data }: { data: Snapshot }) {
           onClick={() =>
             void api("focusStart", {
               minutes: 25,
-              title: "Tempo de foco",
-              mode: "Pomodoro",
+              title: stopwatch ? "Meu cronômetro" : "Tempo de foco",
+              mode: stopwatch ? "Cronômetro" : "Pomodoro",
             })
           }
         >

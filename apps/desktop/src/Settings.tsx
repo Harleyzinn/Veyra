@@ -43,15 +43,15 @@ export function Settings({
   const [release, setRelease] = useState<any>(null);
   const [downloaded, setDownloaded] = useState(false);
   const [updateState, setUpdateState] = useState("");
-  const [shortcutDraft, setShortcutDraft] = useState(
-    data.desktop.shortcuts || {
-      capture: "CommandOrControl+Shift+Space",
-      task: "CommandOrControl+Alt+T",
-      expense: "CommandOrControl+Alt+G",
-      note: "CommandOrControl+Alt+N",
-      focus: "CommandOrControl+Alt+F",
-    },
-  );
+  const [shortcutDraft, setShortcutDraft] = useState({
+    capture: "CommandOrControl+Shift+Space",
+    task: "CommandOrControl+Alt+T",
+    expense: "CommandOrControl+Alt+G",
+    note: "CommandOrControl+Alt+N",
+    focus: "CommandOrControl+Alt+F",
+    recover: "CommandOrControl+Shift+R",
+    ...data.desktop.shortcuts,
+  });
   const [shortcutResult, setShortcutResult] = useState("");
   useEffect(() => {
     if (tab === "Dados") void api("conflicts").then(setConflicts);
@@ -447,6 +447,7 @@ export function Settings({
                         expense: "Novo gasto",
                         note: "Nova nota",
                         focus: "Foco",
+                        recover: "Recuperar painéis",
                       }[name] || name
                     }
                     value={String(key)}
@@ -516,6 +517,10 @@ export function Settings({
                 <div className="widget-options">
                   {[
                     ["mini", "Mini dashboard"],
+                    ["dock", "Veyra Dock"],
+                    ["widget-clock", "Hora e data"],
+                    ["widget-timer", "Cronômetro"],
+                    ["widget-notes", "Notas"],
                     ["widget-finance", "Finanças"],
                     ["widget-tasks", "Tarefas"],
                     ["widget-weather", "Clima"],
@@ -531,6 +536,22 @@ export function Settings({
                       {title}
                     </Button>
                   ))}
+                </div>
+                <Toggle
+                  label="Reduzir efeitos visuais dos painéis"
+                  checked={!!data.desktop.reducedEffects}
+                  change={(v) => setDesktop("reducedEffects", v)}
+                />
+                <div className="actions">
+                  <Button onClick={() => void api("panelsAll", "hide")}>
+                    Ocultar todos
+                  </Button>
+                  <Button onClick={() => void api("panelsAll", "show")}>
+                    Mostrar todos
+                  </Button>
+                  <Button onClick={() => void api("panelsAll", "recover")}>
+                    Recuperar painéis
+                  </Button>
                 </div>
                 <p className="muted">
                   Mini dashboard e widgets podem ficar acima das outras janelas.
