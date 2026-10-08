@@ -263,6 +263,44 @@ class FinanceUiTest {
         }}finally{WorkspaceStore(context).use{it.saveAll(listOf(a,z).map{item->item.copy(deletedAt=System.currentTimeMillis())})}}
     }
 
+    @Test fun reportChartsSwitchEveryViewAndRespectPrivacy(){
+        val today=java.time.LocalDate.now().toString()
+        val income=FinancialDomain.normalize(Item(id="chart-income-$token",type="income",title="Receita gráfico",date=today,fields=mapOf("amountMinor" to "5000","currency" to "BRL","status" to "received")))
+        val expense=FinancialDomain.normalize(Item(id="chart-expense-$token",type="expense",title="Gasto gráfico",date=today,fields=mapOf("amountMinor" to "10001","currency" to "BRL","status" to "paid","category" to "Casa")))
+        val other=expense.copy(id="chart-other-$token",fields=expense.fields+mapOf("amountMinor" to "20000","amount" to "200.00","category" to "Transporte"))
+        WorkspaceStore(context).use{it.saveAll(listOf(income,expense,other))}
+        ActivityScenario.launch(MainActivity::class.java).use{scenario->
+            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Relatórios")).click()
+            scrollTo(By.text("Visualização: Barras"))
+            scrollTo(By.descContains("Gráfico de barras"))
+            var current="Barras"
+            for(view in listOf("Linhas","Área","Rosca","Pizza","Tabela","Barras")){
+                scrollTo(By.text("Visualização: $current")).click();text(By.text(view)).click()
+                when(view){
+                    "Rosca","Pizza"->{
+                        scrollTo(By.descContains("Distribuição dos gastos"))
+                        scrollTo(By.textContains("Total de gastos:"))
+                        Assert.assertTrue(device.findObject(By.textContains("Total de gastos:")).text.contains("300,01"))
+                    }
+                    "Tabela"->scrollTo(By.text("Entradas, gastos e resultado por período"))
+                    else->scrollTo(By.descContains("Gráfico de ${view.lowercase()}"))
+                }
+                device.takeScreenshot(java.io.File("/sdcard/Download/veyra-chart-${view.lowercase().replace('á','a')}-2.4.png"))
+                current=view
+            }
+            scrollTo(By.text("Agrupar por: Semana")).click();text(By.text("Mês")).click()
+            scrollTo(By.text("Comparar: Entradas e gastos")).click();text(By.text("Resultado do período")).click()
+            scrollTo(By.descContains("Resultado. Selecione"))
+            scrollTo(By.textContains("Resultado -"))
+            Assert.assertTrue(device.findObject(By.textContains("Resultado -")).text.contains("250,01"))
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-chart-result-2.4.png"))
+            scenario.onActivity{androidx.lifecycle.ViewModelProvider(it)[VeyraViewModel::class.java].pref("financeHidden","Sim")}
+            scrollTo(By.text("Gráficos ocultos pelo modo privacidade."))
+            Assert.assertFalse(device.hasObject(By.descContains("Gráfico de barras")))
+            Assert.assertFalse(device.hasObject(By.textContains("300,01")))
+        }
+    }
+
     @Test fun missingDeviceCredentialCannotUnlockFinancialData(){
         Assume.assumeFalse(context.getSystemService(KeyguardManager::class.java).isDeviceSecure)
         WorkspaceStore(context).use{it.preference("financeLock","Sim")}

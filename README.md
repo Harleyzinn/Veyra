@@ -4,17 +4,21 @@ Sua vida, em um só lugar. Android nativo em Kotlin/Jetpack Compose e aplicativo
 
 ## Windows + celular
 
-Baixe o [instalador Veyra Life Desktop 4.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o [APK Android 2.3.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.3.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 4.1.0](docs/VALIDATION-DESKTOP-4.1.0.md).
+Baixe o [instalador Veyra Life Desktop 4.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o [APK Android 2.4.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.4.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 4.1.0](docs/VALIDATION-DESKTOP-4.1.0.md).
 
 O Android 2.2 recebe mudanças remotas automaticamente enquanto o app está ativo e registra presença dos dispositivos. Nenhum módulo ou banco Android foi reorganizado. O instalador Windows não tem certificado Authenticode comercial; o atualizador usa assinatura Ed25519 e SHA-256.
 
 ## Evolução desktop 4.0
 
-Home acionável, galeria de widgets, captura local revisável, Inbox, Spotlight, projetos integrados, planejador, backlinks/editor visual de notas, rascunhos protegidos, calendário financeiro, assinaturas/relatórios/CSV, automações, modelos e diagnóstico seguro. [Guia e limites](docs/PLATFORM-4.0.md) · [Matriz dos requisitos](docs/ROADMAP.md). O Android 2.3.0 inclui relatórios filtrados, fluxo de caixa por pagamento, vencimentos e ordenação de tarefas/notas; os dois compartilham os mesmos dados Firebase.
+Home acionável, galeria de widgets, captura local revisável, Inbox, Spotlight, projetos integrados, planejador, backlinks/editor visual de notas, rascunhos protegidos, calendário financeiro, assinaturas/relatórios/CSV, automações, modelos e diagnóstico seguro. [Guia e limites](docs/PLATFORM-4.0.md) · [Matriz dos requisitos](docs/ROADMAP.md). O Android 2.4.0 inclui relatórios filtrados, fluxo de caixa por pagamento, vencimentos e ordenação de tarefas/notas; os dois compartilham os mesmos dados Firebase.
 
 ## APK e instalação
 
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.3.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.4.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+
+## Novidades da versão 2.4
+
+Gráficos da seleção em barras, linhas, área, rosca, pizza e tabela; agrupamento diário, semanal ou mensal; distribuição por categoria, conta ou cartão. Respeitam o período, filtros, moeda e privacidade do relatório. [Detalhes](docs/RELEASE-2.4.0.md).
 
 ## Novidades da versão 2.1
 
@@ -38,7 +42,7 @@ Atualizador via GitHub com download automático em rede sem cobrança por uso, v
 
 - Dashboard com tarefas interativas, finanças, clima, hábitos, água e foco.
 - Tarefas com prioridade, etapas, prazo, recorrência, lembrete e vínculos; calendário e Kanban.
-- Finanças com captura simples e avançada, saldo atual e previsto, contas e carteiras, transferências, faturas e parcelas, regras recorrentes, orçamentos, metas, dívidas, patrimônio, fechamento mensal, alertas, gráficos, filtros e CSV de 15 colunas. Importação CSV/OFX, OCR local, comprovantes e PDF.
+- Finanças com captura simples e avançada, saldo atual e previsto, contas e carteiras, transferências, faturas e parcelas, regras recorrentes, orçamentos, metas, dívidas, patrimônio, fechamento mensal, alertas, gráficos, filtros e CSV com metadados de pagamento. Importação CSV/OFX, OCR local, comprovantes e PDF.
 - Notas com pastas, tags, arquivo, favoritos, salvamento automático e prévia Markdown; diário e links.
 - Clima por várias cidades, previsão horária/7 dias e cache. Modo manual de temperatura/condição para personalização.
 - Hábitos, água, sono, saúde, treinos, Pomodoro, estudos e flashcards.

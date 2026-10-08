@@ -1,6 +1,6 @@
 # Veyra Life Desktop 4.0
 
-O Veyra agora tem um aplicativo Windows próprio, mantendo o Android nativo e o projeto Firebase existente. Instale o EXE da [release desktop](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o APK 2.3.0 da [release Android](https://github.com/Harleyzinn/Veyra/releases/tag/v2.3.0). O instalador oferece pasta de destino, menu Iniciar e atalho. Não exige ferramentas de desenvolvimento. Faça um backup antes de atualizar o celular.
+O Veyra agora tem um aplicativo Windows próprio, mantendo o Android nativo e o projeto Firebase existente. Instale o EXE da [release desktop](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o APK 2.4.0 da [release Android](https://github.com/Harleyzinn/Veyra/releases/tag/v2.4.0). O instalador oferece pasta de destino, menu Iniciar e atalho. Não exige ferramentas de desenvolvimento. Faça um backup antes de atualizar o celular.
 
 Na primeira execução, escolha **Continuar com Google** e use a mesma conta do celular. O login abre o navegador padrão do Windows; não informe sua senha em uma janela incorporada do Veyra. O espaço visitante é separado e continua disponível offline. Os registros de visitante não são enviados para uma conta automaticamente: use a exportação e a prévia de importação se quiser transferi-los.
 
@@ -67,7 +67,7 @@ npm run dist
 
 Da raiz do repositório, execute `./scripts/test-firebase-security.ps1 -Desktop -JavaHome '<JDK 21 ou superior>'`. Os testes usam exclusivamente `demo-veyra`, com Authentication, Firestore e Storage locais. O JDK dos emuladores é independente do JDK 17 do Android. `VEYRA_QA=1` e `VEYRA_QA_DATA` são aceitos somente em execução de desenvolvimento e restringem o cache a `apps/desktop/.qa`; `VEYRA_EMULATOR=1` seleciona os servidores locais nesse modo. Não existem segredos administrativos em variáveis do renderer.
 
-Depois de validar, faça commit/push e execute `./scripts/publish-desktop-release.ps1`. O script publica a release com o instalador, manifesto assinado, código e hashes; não altera a release mais recente do APK. Use `./scripts/publish-release.ps1 -Version 2.3.0` para o Android.
+Depois de validar, faça commit/push e execute `./scripts/publish-desktop-release.ps1`. O script publica a release com o instalador, manifesto assinado, código e hashes; não altera a release mais recente do APK. Use `./scripts/publish-release.ps1 -Version 2.4.0` para o Android.
 
 ## Solução de problemas
 

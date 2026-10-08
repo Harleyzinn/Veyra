@@ -14,6 +14,7 @@ import app.veyra.model.Item
     changeAccount: (String) -> Unit, changeCard: (String) -> Unit, changeCategory: (String) -> Unit,
     changeQuery: (String) -> Unit, currency: String, hidden: Boolean, csv: () -> Unit, pdf: () -> Unit,
     reset: () -> Unit, open: (Item) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
     StudioCard {
         SectionTitle("Seu relatório, do seu jeito")
         Choice("Analisar", ReportBasis.entries.map { it.name }, basis.name, { changeBasis(ReportBasis.valueOf(it)) }) {
@@ -46,5 +47,8 @@ import app.veyra.model.Item
             report.entries.take(5).forEach { FinanceTransactionRow(it, currency, hidden, open) }
             if (report.entries.size > 5) Text("Prévia dos primeiros cinco registros; a exportação inclui todos.", style = MaterialTheme.typography.bodySmall)
         }
+    }
+    if (report != null) FinanceChartStudio(report, basis, java.time.LocalDate.parse(from),
+        java.time.LocalDate.parse(through), all, currency, hidden)
     }
 }

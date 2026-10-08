@@ -192,3 +192,13 @@ Abra **Período e filtros do relatório** para definir De/Até, busca, conta, ca
 O gráfico mensal e o fechamento do mês continuam separados do relatório filtrado. Exportações nas listas de movimentações e pendências também usam totais da seleção, sem incluir saldo de contas ou patrimônio como se fossem resultados do período. CSV ganha as datas e referências de pagamento; exportar CSV não é restaurar um backup nem importar automaticamente no desktop. Use o backup completo para recuperação dos dados.
 
 No Resumo, **Vencimentos em foco** mostra contas e faturas vencidas ou com prazo nos próximos sete dias. As faturas exibem o saldo restante; compras do cartão não são duplicadas como contas avulsas. A moeda escolhida é respeitada. Os valores seguem o botão de privacidade do financeiro.
+
+## Visualizações no Android 2.4
+
+Abaixo do relatório filtrado, **Gráficos da seleção** oferece **Barras**, **Linhas**, **Área**, **Rosca**, **Pizza** e **Tabela**. Use **Visualização** para trocar o formato. Em séries e tabela, **Agrupar por** escolhe dia, semana ou mês. Semanas começam na segunda-feira; o primeiro rótulo pode ser anterior ao início do filtro, mas os registros continuam limitados à seleção. Meses seguem o calendário; um período financeiro personalizado pode abranger dois meses.
+
+Em barras, linhas e área, **Comparar** alterna entre entradas/gastos e o resultado (entradas menos gastos). O resultado pode ser negativo e não inclui saldo inicial de contas. Toque no desenho ou use **Anterior/Próximo** para ler os valores do período selecionado. A tabela tem páginas de doze períodos, com entradas, gastos e resultado.
+
+Rosca e pizza mostram apenas gastos realizados. **Distribuir gastos por** escolhe categoria, conta ou cartão. Toque na legenda para selecionar um grupo. Até sete grupos principais aparecem individualmente; quando há mais de oito, o restante é somado no oitavo. Contas/cartões sem vínculo ficam identificados, e nomes repetidos recebem um identificador curto. Os percentuais são arredondados para uma casa decimal e podem não somar exatamente 100% na tela.
+
+Os dados seguem os filtros, moeda e modo Gastos registrados/Fluxo de caixa do relatório. As visualizações incluem somente os valores que entram nos totais realizados; previsões ficam fora. O modo de privacidade oculta todos os gráficos e valores, inclusive tabela e legendas. Trocar a visualização não altera os registros nem o formato das exportações CSV/PDF; essas exportações continuam sendo relatórios de lançamentos.

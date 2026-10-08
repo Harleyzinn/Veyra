@@ -26,11 +26,16 @@ object FinanceReports {
             it.type in setOf("income", "expense") && (basis == ReportBasis.CASH || it.value("paymentType") != "card_payment")
         }, filter.copy(from = null, through = null), today), query, items)
             .sortedByDescending { if (basis == ReportBasis.CASH) FinancialDomain.bookedDate(it) else FinancialDomain.transactionDate(it) }
-        val realized = entries.filter { it.value("virtual") != "yes" && (basis == ReportBasis.CASH ||
-            if (it.type == "expense") FinanceEngine.recognizedExpense(it, today)
-            else FinancialDomain.settled(it) && !FinancialDomain.bookedDate(it).isAfter(minOf(through, today))) }
+        val realized = realizedEntries(entries, basis, through, today)
         fun sum(type: String) = realized.filter { it.type == type }.fold(0L) { total, item -> Math.addExact(total, FinancialDomain.amount(item)) }
         return FinanceReport(entries, sum("income"), sum("expense"))
+    }
+    /** Same realized rows for report totals and charts; predictions never become actual spending. */
+    fun realizedEntries(entries: List<Item>, basis: ReportBasis, through: LocalDate,
+        today: LocalDate = LocalDate.now()): List<Item> = entries.filter {
+        FinancialDomain.active(it) && it.value("virtual") != "yes" &&
+            (basis == ReportBasis.CASH || if (it.type == "expense") FinanceEngine.recognizedExpense(it, today)
+            else FinancialDomain.settled(it) && !FinancialDomain.bookedDate(it).isAfter(minOf(through, today)))
     }
     fun totals(entries: List<Item>, today: LocalDate = LocalDate.now()): FinanceReport {
         fun sum(type: String) = entries.filter { it.type == type && FinancialDomain.active(it) && it.value("virtual") != "yes" &&
