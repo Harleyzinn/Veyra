@@ -35,7 +35,8 @@ try {
     if(-not $credentials['password']){throw 'Credencial Git indisponível.'}
     $headers=@{Authorization="Bearer $($credentials['password'])";Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28';'User-Agent'='Veyra-desktop-release'}
     $stage='criação da release'
-    $release=Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers | Where-Object {$_.tag_name -eq "desktop-v$Version"} | Select-Object -First 1
+    $releases=Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $headers
+    $release=$releases | Where-Object {$_.tag_name -eq "desktop-v$Version"} | Select-Object -First 1
     if($release -and $release.target_commitish -ne $commit){throw 'A tag já está associada a outro commit.'}
     if(-not $release){
         $payload=@{tag_name="desktop-v$Version";target_commitish=$commit;name="Veyra Life Desktop $Version";body=$body;draft=$true;prerelease=$false;make_latest='false'} | ConvertTo-Json
