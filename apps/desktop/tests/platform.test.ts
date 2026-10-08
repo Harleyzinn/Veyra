@@ -11,6 +11,7 @@ import {
   validateTaskDependencies,
   planAutomations,
   dailySummary,
+  paymentAgenda,
 } from "../shared/platform";
 import { desktopPatch } from "../shared/settings";
 import { reportCSV, reportRows, readCSV } from "../shared/reporting";
@@ -25,6 +26,125 @@ test("Portuguese quick capture preserves exact cents and always proposes a revie
   assert.equal(t.item.date, "2026-10-09");
   assert.equal(t.item.fields.time, "18:00");
   assert.equal(interpretQuick("Ideia para projeto")?.item.type, "note");
+});
+
+test("payment agenda includes overdue bills and remaining invoices once, with currency and deletion isolation", () => {
+  const bill = createItem("expense", {
+      id: "bill",
+      date: "2026-10-07",
+      title: "Internet",
+      fields: { amountMinor: "12000", currency: "BRL", status: "pending" },
+    }),
+    card = createItem("card", { id: "card", title: "Meu cartão" });
+  const invoices = [
+    {
+      id: "invoice:card:2026-10-09",
+      cardId: "card",
+      due: "2026-10-09",
+      total: 90000,
+      paid: 20000,
+      remaining: 70000,
+      currency: "BRL",
+    },
+  ];
+  const result = paymentAgenda([bill], invoices, [bill, card], "2026-10-08");
+  assert.equal(result.length, 2);
+  assert(result[0].overdue);
+  assert.equal(result[1].value, 70000);
+  assert.equal(result[1].itemId, "card");
+  assert.equal(
+    paymentAgenda(
+      [bill],
+      [{ ...invoices[0], remaining: 0 }],
+      [bill, card],
+      "2026-10-08",
+    ).length,
+    1,
+  );
+  assert.equal(
+    paymentAgenda(
+      [],
+      [{ ...invoices[0], currency: "USD" }],
+      [card],
+      "2026-10-08",
+    ).length,
+    0,
+  );
+  assert.equal(
+    paymentAgenda([], invoices, [{ ...card, deletedAt: 1 }], "2026-10-08")
+      .length,
+    0,
+  );
+});
+test("cash reports use actual payment dates and exclude card purchases, transfers, pending and future payments", () => {
+  const income = createItem("income", {
+    date: "2026-01-28",
+    fields: {
+      amountMinor: "100000",
+      currency: "BRL",
+      status: "received",
+      settledDate: "2026-02-02",
+    },
+  });
+  const purchase = createItem("expense", {
+    date: "2026-02-03",
+    fields: {
+      amountMinor: "30000",
+      currency: "BRL",
+      card: "c",
+      financialVersion: "3",
+      status: "paid",
+    },
+  });
+  const payment = createItem("expense", {
+    date: "2026-01-30",
+    fields: {
+      amountMinor: "20000",
+      currency: "BRL",
+      card: "c",
+      financialVersion: "3",
+      paymentType: "card_payment",
+      invoiceId: "invoice:c:2026-02-10",
+      settledDate: "2026-02-10",
+      status: "paid",
+    },
+  });
+  const pending = createItem("expense", {
+    date: "2026-02-05",
+    fields: { amountMinor: "1000", currency: "BRL", status: "pending" },
+  });
+  const future = {
+      ...income,
+      id: "future",
+      fields: { ...income.fields, settledDate: "2099-02-02" },
+    },
+    transfer = createItem("transfer", {
+      date: "2026-02-03",
+      fields: { amountMinor: "90000", status: "paid" },
+    });
+  const items = [income, purchase, payment, pending, future, transfer],
+    filter = {
+      from: "2026-02-01",
+      to: "2026-02-28",
+      currency: "BRL",
+      basis: "cash" as const,
+    };
+  const result = reportRows(items, filter);
+  assert.equal(result.income, 100000);
+  assert.equal(result.expense, 20000);
+  assert.equal(result.rows.length, 2);
+  assert.equal(
+    reportRows(items, { ...filter, basis: "recognized" }).expense,
+    30000,
+  );
+  assert.equal(reportRows(items, { ...filter, card: "c" }).expense, 20000);
+  const csv = readCSV(reportCSV(items, filter));
+  assert.equal(csv[0][9], "paymentType");
+  assert.equal(
+    csv.find((row) => row[9] === "card_payment")?.[11],
+    "2026-02-10",
+  );
+  assert.throws(() => reportRows(items, { ...filter, basis: "wrong" as any }));
 });
 test("monthly natural captures preserve requested day and reject impossible dates and amounts", () => {
   const p = interpretQuick("Internet 120 todo dia 31", "2026-02-15")!;

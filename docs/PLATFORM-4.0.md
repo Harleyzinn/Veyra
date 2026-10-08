@@ -45,3 +45,5 @@ Arquivos arrastados exigem concessão de uso único vinculada à janela/UID e co
 Canal Stable permanece padrão. Beta, plugins executáveis, IA externa e banco automático não foram adicionados sem infraestrutura apropriada. O atualizador existente verifica Ed25519, SHA-256, host fixo e versão superior; instalar depende da ação do usuário. A assinatura do manifesto não substitui certificado Authenticode nem garante reputação SmartScreen/Play Protect.
 
 Veja [auditoria](AUDIT-PLATFORM-4.0.md), [matriz de requisitos](ROADMAP.md), [validação e medições](VALIDATION-DESKTOP-4.0.0.md), [arquitetura](DESKTOP-ARCHITECTURE.md), [Firebase](FIREBASE-SETUP.md) e [Glass](DESKTOP-GLASS.md). Login humano Google, aparelho Android físico, Windows 10, monitores físicos adicionais e suspensão real ainda exigem validação nesses ambientes. Esses limites não são apresentados como testes concluídos.
+
+O [refinamento 4.1](AUDIT-REFINEMENT-4.1.md) acrescenta fluxo de caixa por data de pagamento, agenda com faturas/saldo restante, preservação financeira no CSV e comparação/recuperação de conflitos no editor de notas. [Validação atual](VALIDATION-DESKTOP-4.1.0.md).

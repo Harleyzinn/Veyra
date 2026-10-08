@@ -85,7 +85,7 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
 ]);
-const version = "4.0.0";
+const version = "4.1.0";
 const bootAt = Date.now();
 let firstPaintMs = 0;
 let financeCache: {
@@ -827,6 +827,30 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
               );
             fields[type] = matches[0].id;
           }
+        if (record.settleddate) {
+          if (!validDate(record.settleddate))
+            throw Error("Confira data do pagamento na linha " + (n + 2));
+          fields.settledDate = record.settleddate;
+        }
+        if (record.legacycardcash === "yes") fields.legacyCardCash = "yes";
+        if (record.financialversion) {
+          if (record.financialversion !== "3")
+            throw Error("Versão financeira não suportada na linha " + (n + 2));
+          fields.financialVersion = "3";
+        }
+        if (record.paymenttype) {
+          if (
+            record.paymenttype !== "card_payment" ||
+            record.type !== "expense" ||
+            !fields.card ||
+            !validDate(record.invoicedue)
+          )
+            throw Error(
+              "Confira o cartão e vencimento da fatura na linha " + (n + 2),
+            );
+          fields.paymentType = "card_payment";
+          fields.invoiceId = "invoice:" + fields.card + ":" + record.invoicedue;
+        }
         return createItem(record.type, {
           id: "csv:" + sha(JSON.stringify({ record, n })),
           title: record.title,

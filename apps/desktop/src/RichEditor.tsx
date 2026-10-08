@@ -22,15 +22,21 @@ function renderMarkdown(element: HTMLElement, markdown: string) {
   let pre: HTMLElement | null = null;
   for (const line of markdown.split("\n")) {
     if (line.startsWith("```")) {
-      if (pre) pre = null;
-      else {
+      if (pre) {
+        pre.dataset.source += line + "\n";
+        pre.dataset.baseline = serialize(pre);
+        pre = null;
+      } else {
         pre = document.createElement("pre");
+        pre.dataset.source = line + "\n";
         element.append(pre);
       }
       continue;
     }
     if (pre) {
       pre.append(document.createTextNode((pre.textContent ? "\n" : "") + line));
+      pre.dataset.source += line + "\n";
+      pre.dataset.baseline = serialize(pre);
       continue;
     }
     const heading = line.match(/^(#{1,3})\s+(.+)/),
@@ -50,13 +56,15 @@ function renderMarkdown(element: HTMLElement, markdown: string) {
       heading ? heading[2] : list ? list[1] : quote ? quote[1] : line,
     );
     if (!line) node.append(document.createElement("br"));
+    node.dataset.source = line + "\n";
+    node.dataset.baseline = serialize(node);
     element.append(node);
   }
 }
-function markdown(node: Node): string {
+function serialize(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
   if (!(node instanceof HTMLElement)) return "";
-  const content = Array.from(node.childNodes).map(markdown).join("");
+  const content = Array.from(node.childNodes).map(serialize).join("");
   switch (node.tagName) {
     case "STRONG":
     case "B":
@@ -85,6 +93,12 @@ function markdown(node: Node): string {
       return content;
   }
 }
+function preserved(node: Node) {
+  const value = serialize(node);
+  return node instanceof HTMLElement && node.dataset.baseline === value
+    ? node.dataset.source || value
+    : value;
+}
 export default function RichEditor({
   initial,
   onChange,
@@ -103,7 +117,7 @@ export default function RichEditor({
     if (ref.current)
       change.current(
         Array.from(ref.current.childNodes)
-          .map(markdown)
+          .map(preserved)
           .join("")
           .replace(/\n$/, ""),
       );
@@ -151,7 +165,6 @@ export default function RichEditor({
         aria-multiline
         suppressContentEditableWarning
         onInput={emit}
-        onBlur={emit}
         onPaste={(e) => {
           e.preventDefault();
           const text = e.clipboardData.getData("text/plain").slice(0, 100000),

@@ -1,9 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useDeferredValue,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Plus, Star, History, Paperclip, Link2 } from "lucide-react";
-import { Item, Snapshot } from "../shared/model";
-import { backlinks } from "../shared/platform";
+import { Item, Snapshot, createItem } from "../shared/model";
+import {
+  backlinks,
+  sameContent,
+  parseSearch,
+  matchesSearch,
+} from "../shared/platform";
 import { api, Button, Empty, SearchBox, Field, Modal, dateLabel } from "./ui";
 import RichEditor from "./RichEditor";
 export default function Notes({
@@ -13,7 +24,10 @@ export default function Notes({
   data: Snapshot;
   create: (type: string) => void;
 }) {
-  const notes = data.items.filter((i) => i.type === "note"),
+  const notes = useMemo(
+      () => data.items.filter((i) => i.type === "note"),
+      [data.items],
+    ),
     [selected, setSelected] = useState(notes[0]?.id || ""),
     [draft, setDraft] = useState<Item | null>(null),
     [query, setQuery] = useState(""),
@@ -21,8 +35,15 @@ export default function Notes({
     [mode, setMode] = useState("markdown"),
     [saved, setSaved] = useState(""),
     [history, setHistory] = useState<any[] | null>(null),
-    [matching, setMatching] = useState<Set<string> | null>(null),
-    [image, setImage] = useState<string | null>(null);
+    [visibleCount, setVisibleCount] = useState(100),
+    [image, setImage] = useState<string | null>(null),
+    [conflict, setConflict] = useState<{
+      local: Item;
+      remote: Item | null;
+    } | null>(null),
+    [failed, setFailed] = useState(false),
+    [recoverError, setRecoverError] = useState(""),
+    [editorVersion, setEditorVersion] = useState(0);
   const pending = useRef(new Map<string, Item>()),
     bases = useRef(new Map<string, Item>()),
     queue = useRef(Promise.resolve()),
@@ -35,19 +56,33 @@ export default function Notes({
     if (!next) return;
     pending.current.delete(id);
     const scope = uid.current;
+    let draftWritten = false;
     queue.current = queue.current
       .then(async () => {
         await api("draftWrite", { item: next, expectedUid: scope });
+        draftWritten = true;
         await api("save", {
           item: next,
           base: bases.current.get(id),
           expectedUid: scope,
         });
         bases.current.set(id, next);
-        if (latest.current?.id === id) setSaved("Salvo neste PC");
+        if (latest.current?.id === id) {
+          setSaved("Salvo neste PC");
+          setFailed(false);
+        }
       })
       .catch((e) => {
-        setSaved(e.message + " Seu rascunho permanece neste PC.");
+        if (!pending.current.has(id)) pending.current.set(id, next);
+        if (latest.current?.id === id) {
+          setSaved(
+            e.message +
+              (draftWritten
+                ? " Seu rascunho permanece neste PC."
+                : " Não foi possível gravar o rascunho; mantenha esta janela aberta para copiar sua edição."),
+          );
+          setFailed(true);
+        }
       });
   };
   useEffect(() => {
@@ -63,6 +98,8 @@ export default function Notes({
           latest.current = item;
           if (item) bases.current.set(item.id, item);
           setSaved("");
+          setFailed(false);
+          setEditorVersion((n) => n + 1);
         }
       });
     return () => {
@@ -72,20 +109,25 @@ export default function Notes({
     };
   }, [selected]);
   useEffect(() => {
-    let live = true;
-    const t = setTimeout(() => {
-      void api("universalSearch", {
-        query: "type:note " + query,
-        limit: 100,
-      }).then((r) => {
-        if (live) setMatching(new Set(r.items.map((i: Item) => i.id)));
-      });
-    }, 120);
-    return () => {
-      live = false;
-      clearTimeout(t);
-    };
-  }, [query, data.items]);
+    const remote = notes.find((n) => n.id === selected),
+      current = latest.current,
+      base = bases.current.get(selected);
+    if (
+      remote &&
+      current &&
+      base &&
+      !failed &&
+      !pending.current.has(selected) &&
+      sameContent(current, base) &&
+      !sameContent(remote, base)
+    ) {
+      latest.current = remote;
+      bases.current.set(selected, remote);
+      setDraft(remote);
+      setEditorVersion((n) => n + 1);
+      setSaved("Atualizada por outra janela ou dispositivo.");
+    }
+  }, [data.items, selected, failed]);
   useEffect(
     () => () => {
       if (draftTimer.current) clearTimeout(draftTimer.current);
@@ -109,7 +151,7 @@ export default function Notes({
             (e) =>
               setSaved("Não foi possível guardar o rascunho: " + e.message),
           );
-      }, 250);
+      }, 1000);
     }
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => flush(next.id), 650);
@@ -117,6 +159,43 @@ export default function Notes({
   const insert = (text: string) => {
     if (draft)
       update({ notes: draft.notes + (draft.notes ? "\n" : "") + text });
+  };
+  const compare = async () => {
+    await queue.current;
+    const local = latest.current;
+    if (!local) return;
+    const remote = await api("item", local.id);
+    setRecoverError("");
+    setConflict({ local, remote });
+  };
+  const copyConflict = async () => {
+    if (!conflict) return;
+    try {
+      const copy = createItem("note", {
+        ...conflict.local,
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        title:
+          (conflict.local.title || "Nota").slice(0, 175) + " (minha cópia)",
+        fields: { ...conflict.local.fields },
+      });
+      if (!copy.fields.attachment)
+        for (const key of [
+          "hasAttachment",
+          "attachmentName",
+          "attachmentHash",
+          "attachmentLocalOnly",
+        ])
+          delete copy.fields[key];
+      await api("save", { item: copy, expectedUid: uid.current });
+      pending.current.delete(conflict.local.id);
+      await api("draftDelete", conflict.local.id);
+      setConflict(null);
+      setSelected(copy.id);
+      setMode("markdown");
+    } catch (e) {
+      setRecoverError((e as Error).message);
+    }
   };
   useEffect(() => {
     let live = true;
@@ -131,6 +210,32 @@ export default function Notes({
       live = false;
     };
   }, [draft?.id, draft?.fields.attachmentHash, data.items]);
+  const deferredQuery = useDeferredValue(query);
+  const syntax = useMemo(
+    () => parseSearch(deferredQuery, data.finance.currency),
+    [deferredQuery, data.finance.currency],
+  );
+  const filteredNotes = useMemo(
+    () =>
+      notes
+        .filter(
+          (i) =>
+            (!folder || folder === "@favorite"
+              ? !folder || i.favorite
+              : i.fields.folder === folder) &&
+            !syntax.error &&
+            matchesSearch(i, syntax),
+        )
+        .sort(
+          (a, b) =>
+            Number(b.favorite) - Number(a.favorite) ||
+            Number(b.fields.pinned === "yes") -
+              Number(a.fields.pinned === "yes") ||
+            b.createdAt - a.createdAt,
+        ),
+    [notes, folder, syntax],
+  );
+  useEffect(() => setVisibleCount(100), [query, folder]);
   const folders = [
     ...new Set(notes.map((n) => n.fields.folder).filter(Boolean)),
   ];
@@ -195,46 +300,39 @@ export default function Notes({
             onChange={setQuery}
             placeholder="Buscar nas notas"
           />
-          {notes
-            .filter(
-              (i) =>
-                (!folder || folder === "@favorite"
-                  ? !folder || i.favorite
-                  : i.fields.folder === folder) &&
-                (!query || !matching || matching.has(i.id)),
-            )
-            .sort(
-              (a, b) =>
-                Number(b.favorite) - Number(a.favorite) ||
-                Number(b.fields.pinned === "yes") -
-                  Number(a.fields.pinned === "yes") ||
-                b.createdAt - a.createdAt,
-            )
-            .map((i) => (
-              <button
-                key={i.id}
-                className={
-                  "note-preview " + (selected === i.id ? "selected" : "")
-                }
-                onClick={() => {
-                  flush(selected);
-                  setSelected(i.id);
-                  setMode("markdown");
-                }}
-              >
-                <strong>
-                  {i.title}
-                  {i.favorite && <Star size={12} />}
-                </strong>
-                <p>
-                  {i.notes.slice(0, 100) || "Uma ideia esperando palavras."}
-                </p>
-                <small>
-                  {dateLabel(i.date)}
-                  {i.fields.folder ? " · " + i.fields.folder : ""}
-                </small>
-              </button>
-            ))}
+          {filteredNotes.slice(0, visibleCount).map((i) => (
+            <button
+              key={i.id}
+              className={
+                "note-preview " + (selected === i.id ? "selected" : "")
+              }
+              onClick={() => {
+                flush(selected);
+                setSelected(i.id);
+                setMode("markdown");
+              }}
+            >
+              <strong>
+                {i.title}
+                {i.favorite && <Star size={12} />}
+              </strong>
+              <p>{i.notes.slice(0, 100) || "Uma ideia esperando palavras."}</p>
+              <small>
+                {dateLabel(i.date)}
+                {i.fields.folder ? " · " + i.fields.folder : ""}
+              </small>
+            </button>
+          ))}
+          {syntax.error && <p className="error">{syntax.error}</p>}
+          <p className="muted small">
+            {filteredNotes.length} notas
+            {deferredQuery !== query ? " · Pesquisando…" : ""}
+          </p>
+          {filteredNotes.length > visibleCount && (
+            <Button onClick={() => setVisibleCount((n) => n + 100)}>
+              Mostrar mais notas
+            </Button>
+          )}
         </aside>
         <section className="note-editor">
           {draft ? (
@@ -244,6 +342,15 @@ export default function Notes({
                   {saved || "Autosave local ativo"}
                 </span>
                 <div className="actions">
+                  {failed && (
+                    <Button
+                      onClick={() =>
+                        void compare().catch((e) => setSaved(e.message))
+                      }
+                    >
+                      Comparar versões
+                    </Button>
+                  )}
                   <Button onClick={() => update({ favorite: !draft.favorite })}>
                     <Star size={15} />
                     Favoritar
@@ -345,7 +452,7 @@ export default function Notes({
                 </>
               ) : mode === "visual" ? (
                 <RichEditor
-                  key={draft.id}
+                  key={draft.id + ":" + editorVersion}
                   initial={draft.notes}
                   onChange={(notes) => update({ notes })}
                 />
@@ -440,6 +547,45 @@ export default function Notes({
           )}
         </section>
       </div>
+      {conflict && (
+        <Modal
+          title="Comparar versões da nota"
+          wide
+          onClose={() => setConflict(null)}
+        >
+          <div className="form-body">
+            <p>
+              Confira as duas versões. Salvar como cópia preserva a nota atual e
+              sua edição em registros separados.
+            </p>
+            <div className="note-compare">
+              <section>
+                <h3>Sua edição</h3>
+                <strong>{conflict.local.title}</strong>
+                <pre>{conflict.local.notes}</pre>
+              </section>
+              <section>
+                <h3>Versão atual salva</h3>
+                <strong>
+                  {conflict.remote?.title || "Registro não disponível"}
+                </strong>
+                <pre>
+                  {conflict.remote?.notes ||
+                    "A nota pode ter sido removida em outra janela."}
+                </pre>
+              </section>
+            </div>
+            <p className="muted">
+              Anexos existentes permanecem na nota original. Arquivos já
+              incluídos nesta edição são preservados na cópia.
+            </p>
+            {recoverError && <p className="error">{recoverError}</p>}
+            <Button kind="primary" onClick={() => void copyConflict()}>
+              Salvar minha edição como cópia
+            </Button>
+          </div>
+        </Modal>
+      )}
       {history && (
         <Modal title="Histórico da nota" onClose={() => setHistory(null)}>
           <div className="form-body">

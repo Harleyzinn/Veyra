@@ -40,7 +40,8 @@ export default function FinanceExtras({
     [card, setCard] = useState(""),
     [category, setCategory] = useState(""),
     [preview, setPreview] = useState<any>(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [basis, setBasis] = useState<"recognized" | "cash">("recognized");
   const cur = data.finance.currency,
     hidden =
       data.preferences.financeHidden === "yes" ||
@@ -180,7 +181,7 @@ export default function FinanceExtras({
       </Panel>
     );
   }
-  const filter = { from, to, currency: cur, account, card, category };
+  const filter = { from, to, currency: cur, account, card, category, basis };
   let report = null,
     reportError = "";
   try {
@@ -195,6 +196,18 @@ export default function FinanceExtras({
         subtitle="Escolha período e filtros. A exportação inclui somente os lançamentos selecionados."
       >
         <div className="form-grid">
+          <Field
+            label="Como analisar"
+            value={basis}
+            onChange={(v) => setBasis(v as "recognized" | "cash")}
+            options={[
+              {
+                value: "recognized",
+                label: "Gastos registrados — data da compra",
+              },
+              { value: "cash", label: "Fluxo de caixa — data do pagamento" },
+            ]}
+          />
           <Field label="De" value={from} onChange={setFrom} type="date" />
           <Field label="Até" value={to} onChange={setTo} type="date" />
           <Field
@@ -266,9 +279,10 @@ export default function FinanceExtras({
           </Button>
         </div>
         <p className="muted small">
-          Sem transferências internas ou pagamento duplicado de faturas nos
-          totais. Valores previstos ficam identificados no arquivo. Notas,
-          anexos e números de cartão não são exportados.
+          {basis === "cash"
+            ? "Fluxo de caixa considera recebimentos e pagamentos confirmados, incluindo a quitação da fatura. Compras no cartão e transferências internas não entram novamente."
+            : "Gastos registrados consideram a data da compra, incluindo cartão; pagamento de fatura não duplica a despesa. Valores previstos ficam identificados."}{" "}
+          Notas, anexos e números de cartão não são exportados.
         </p>
         {(error || reportError) && (
           <p className="error">{error || reportError}</p>
@@ -282,7 +296,11 @@ export default function FinanceExtras({
               <strong>{cash(report.income)}</strong>
             </div>
             <div>
-              <small>Despesas reconhecidas</small>
+              <small>
+                {basis === "cash"
+                  ? "Saídas efetivamente pagas"
+                  : "Despesas reconhecidas"}
+              </small>
               <strong>{cash(report.expense)}</strong>
             </div>
             <div>
@@ -290,7 +308,11 @@ export default function FinanceExtras({
               <strong>{cash(report.net)}</strong>
             </div>
             <div>
-              <small>Lançamentos, incluindo previsão</small>
+              <small>
+                {basis === "cash"
+                  ? "Lançamentos confirmados"
+                  : "Lançamentos, incluindo previsão"}
+              </small>
               <strong>{report.rows.length}</strong>
             </div>
           </div>

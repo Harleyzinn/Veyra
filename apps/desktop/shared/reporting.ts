@@ -1,5 +1,12 @@
 import { Item, amount, safe, decimal, validDate, today } from "./model";
-import { active, settled, booked, currency, expanded } from "./finance";
+import {
+  active,
+  settled,
+  booked,
+  currency,
+  expanded,
+  cashDelta,
+} from "./finance";
 export interface ReportFilter {
   from: string;
   to: string;
@@ -7,6 +14,7 @@ export interface ReportFilter {
   account?: string;
   card?: string;
   category?: string;
+  basis?: "recognized" | "cash";
 }
 export function reportRows(items: Item[], filter: ReportFilter) {
   if (
@@ -15,14 +23,21 @@ export function reportRows(items: Item[], filter: ReportFilter) {
     filter.from > filter.to
   )
     throw Error("Confira o período do relatório.");
+  if (filter.basis && !["recognized", "cash"].includes(filter.basis))
+    throw Error("Escolha gasto registrado ou fluxo de caixa.");
+  const cash = filter.basis === "cash";
   const rows = expanded(items, filter.from, filter.to).filter(
     (i) =>
-      i.date >= filter.from &&
-      i.date <= filter.to &&
+      (cash ? booked(i) : i.date) >= filter.from &&
+      (cash ? booked(i) : i.date) <= filter.to &&
       currency(i) === filter.currency &&
       active(i) &&
       ["income", "expense"].includes(i.type) &&
-      i.fields.paymentType !== "card_payment" &&
+      (cash
+        ? i.fields.virtual !== "yes" &&
+          booked(i) <= today() &&
+          cashDelta(i) !== 0
+        : i.fields.paymentType !== "card_payment") &&
       (!filter.account || i.fields.account === filter.account) &&
       (!filter.card || i.fields.card === filter.card) &&
       (!filter.category || i.fields.category === filter.category),
@@ -30,7 +45,8 @@ export function reportRows(items: Item[], filter: ReportFilter) {
   const realized = rows.filter(
     (i) =>
       i.fields.virtual !== "yes" &&
-      ((settled(i) && booked(i) <= filter.to && booked(i) <= today()) ||
+      (cash ||
+        (settled(i) && booked(i) <= filter.to && booked(i) <= today()) ||
         (i.type === "expense" &&
           !!i.fields.card &&
           i.date <= filter.to &&
@@ -80,6 +96,11 @@ export function reportCSV(items: Item[], filter: ReportFilter) {
         "account",
         "card",
         "status",
+        "paymentType",
+        "settledDate",
+        "invoiceDue",
+        "legacyCardCash",
+        "financialVersion",
       ],
       ...report.rows.map((i) => [
         i.type,
@@ -91,6 +112,13 @@ export function reportCSV(items: Item[], filter: ReportFilter) {
         names.get(i.fields.account) || "",
         names.get(i.fields.card) || "",
         i.fields.virtual === "yes" ? "expected" : i.fields.status || "",
+        i.fields.paymentType || "",
+        i.fields.settledDate || "",
+        i.fields.paymentType === "card_payment"
+          ? i.fields.invoiceId?.slice(-10) || ""
+          : "",
+        i.fields.legacyCardCash || "",
+        i.fields.financialVersion || "",
       ]),
     ]
       .map((row) => row.map(csvCell).join(";"))

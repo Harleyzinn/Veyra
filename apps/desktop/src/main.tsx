@@ -70,6 +70,7 @@ import {
   widgetCatalog,
   defaultDashboard,
   dailySummary,
+  paymentAgenda,
 } from "../shared/platform";
 import { reportRows } from "../shared/reporting";
 import { modules } from "../shared/commands";
@@ -547,6 +548,7 @@ function App() {
                 ) : null}
                 <button
                   key={id}
+                  aria-label={title}
                   className={page === id ? "active" : ""}
                   onClick={() => setPage(id)}
                 >
@@ -1619,6 +1621,28 @@ function FloatingModule({
         </small>
       </section>
     );
+  if (id === "bills") {
+    const summary = dailySummary(data.items, today(), data.finance.currency),
+      payments = paymentAgenda(
+        summary.bills,
+        data.finance.invoices,
+        data.items,
+        today(),
+        data.finance.currency,
+      );
+    return (
+      <section className="floating-tile">
+        {heading("Contas e faturas", "finance")}
+        {payments.slice(0, 3).map((p) => (
+          <p className="tile-text" key={p.id}>
+            {p.title} · {p.overdue ? "Vencida" : dateLabel(p.date)}
+          </p>
+        ))}
+        {!payments.length && <p>Nenhuma pendência por aqui.</p>}
+        <small>{payments.length} compromissos</small>
+      </section>
+    );
+  }
   if (["bills", "inbox", "progress", "recent-spending"].includes(id)) {
     const summary = dailySummary(data.items, today(), data.finance.currency);
     const list =

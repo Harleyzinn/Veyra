@@ -162,11 +162,11 @@ async function run() {
     await page.getByText("Salvo neste PC", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Roteiro", exact: true }).waitFor();
     const base = await call("item", "n");
+    await page.getByLabel("Conteúdo da nota").fill("Meu rascunho concorrente");
     await call("save", {
       item: { ...base, notes: "Alteração de outro editor" },
       base,
     });
-    await page.getByLabel("Conteúdo da nota").fill("Meu rascunho concorrente");
     await page.getByText(/rascunho permanece neste PC/).waitFor();
     assert.equal((await call("item", "n")).notes, "Alteração de outro editor");
     assert(

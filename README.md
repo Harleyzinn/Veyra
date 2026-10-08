@@ -4,7 +4,7 @@ Sua vida, em um só lugar. Android nativo em Kotlin/Jetpack Compose e aplicativo
 
 ## Windows + celular
 
-Baixe o [instalador Veyra Life Desktop 4.0.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.0.0) e o [APK Android 2.2.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 4.0.0](docs/VALIDATION-DESKTOP-4.0.0.md).
+Baixe o [instalador Veyra Life Desktop 4.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o [APK Android 2.2.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 4.1.0](docs/VALIDATION-DESKTOP-4.1.0.md).
 
 O Android 2.2 recebe mudanças remotas automaticamente enquanto o app está ativo e registra presença dos dispositivos. Nenhum módulo ou banco Android foi reorganizado. O instalador Windows não tem certificado Authenticode comercial; o atualizador usa assinatura Ed25519 e SHA-256.
 

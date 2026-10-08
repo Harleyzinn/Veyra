@@ -23,7 +23,12 @@ import {
   safe,
   parseMinor,
 } from "../shared/model";
-import { dailySummary, linkedItems, taskBlocked } from "../shared/platform";
+import {
+  dailySummary,
+  linkedItems,
+  taskBlocked,
+  paymentAgenda,
+} from "../shared/platform";
 import { active, settled, currency } from "../shared/finance";
 import { reportRows } from "../shared/reporting";
 import {
@@ -1200,6 +1205,14 @@ export function CommandHome({
       </Panel>
     );
   }
+  const payments = paymentAgenda(
+    summary.bills,
+    data.finance.invoices,
+    data.items,
+    today(),
+    data.finance.currency,
+  );
+  const first = payments[0];
   const hour = new Date().getHours(),
     next = summary.events.find(
       (i) =>
@@ -1262,18 +1275,18 @@ export function CommandHome({
         </button>
         <button
           onClick={() =>
-            summary.bills[0] ? open(summary.bills[0]) : go("finance")
+            first && data.items.find((i) => i.id === first.itemId)
+              ? open(data.items.find((i) => i.id === first.itemId)!)
+              : go("finance")
           }
         >
-          <span>Contas nos próximos 7 dias</span>
+          <span>Contas e faturas próximas</span>
           <strong>
-            {summary.bills.length
-              ? summary.bills[0].title
-              : "Nenhuma conta prevista"}
+            {payments.length ? first.title : "Nenhuma conta ou fatura prevista"}
           </strong>
           <small>
-            {summary.bills.length
-              ? `${summary.bills.length} pendências · primeira ${dateLabel(summary.bills[0].fields.dueDate || summary.bills[0].date)}`
+            {payments.length
+              ? `${payments.length} pendências · ${first.overdue ? "vencida " : "primeira "}${dateLabel(first.date)}`
               : "Confira séries e faturas no financeiro"}
           </small>
         </button>
@@ -1300,20 +1313,43 @@ export function ExtraWidget({
   } catch {
     return <Empty title="Confira o financeiro antes de continuar" />;
   }
-  if (id === "bills")
+  if (id === "bills") {
+    const payments = paymentAgenda(
+      summary.bills,
+      data.finance.invoices,
+      data.items,
+      today(),
+      data.finance.currency,
+    );
     return (
       <Panel
-        title="Contas próximas"
+        title="Contas e faturas próximas"
         action={<Button onClick={() => go("finance")}>Ver todas</Button>}
       >
-        {summary.bills.slice(0, 4).map((i) => (
-          <RecordRow key={i.id} item={i} open={open} />
+        {payments.slice(0, 5).map((p) => (
+          <button
+            className="payment-agenda-row"
+            key={p.id}
+            onClick={() => {
+              const item = data.items.find((i) => i.id === p.itemId);
+              if (item) open(item);
+              else go("finance");
+            }}
+          >
+            <span>
+              <strong>{p.title}</strong>
+              <small>
+                {p.overdue ? "Vencida · " : ""}
+                {dateLabel(p.date)}
+              </small>
+            </span>
+            <strong>{cash(p.value)}</strong>
+          </button>
         ))}
-        {!summary.bills.length && (
-          <Empty title="Próximos dias sem contas previstas" />
-        )}
+        {!payments.length && <Empty title="Nenhuma conta ou fatura prevista" />}
       </Panel>
     );
+  }
   if (id === "inbox")
     return (
       <Panel

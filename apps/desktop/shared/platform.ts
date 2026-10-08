@@ -8,6 +8,7 @@ import {
   validDate,
   amount,
   safe,
+  Invoice,
 } from "./model";
 import { active, currency, expanded, due, settled } from "./finance";
 import { habitStats } from "./productivity";
@@ -429,6 +430,56 @@ export const defaultDashboard = [
   { id: "habits", size: "normal" },
   { id: "notes", size: "wide" },
 ];
+
+export function paymentAgenda(
+  bills: Item[],
+  invoices: Invoice[],
+  items: Item[],
+  reference = today(),
+  cur = "BRL",
+) {
+  const end = addDays(reference, 7),
+    names = new Map(
+      items.filter((i) => !i.deletedAt).map((i) => [i.id, i.title]),
+    );
+  const rows = bills
+    .filter(
+      (i) =>
+        active(i) &&
+        !settled(i) &&
+        !i.fields.card &&
+        currency(i) === cur &&
+        validDate(due(i)) &&
+        due(i) <= end,
+    )
+    .map((i) => ({
+      id: i.id,
+      title: i.title,
+      date: due(i),
+      value: amount(i),
+      itemId: i.fields.source || i.id,
+      kind: "Conta",
+    }));
+  for (const i of invoices)
+    if (
+      i.remaining > 0 &&
+      i.currency === cur &&
+      names.has(i.cardId) &&
+      validDate(i.due) &&
+      i.due <= end
+    )
+      rows.push({
+        id: i.id,
+        title: "Fatura · " + names.get(i.cardId),
+        date: i.due,
+        value: i.remaining,
+        itemId: i.cardId,
+        kind: "Fatura",
+      });
+  return rows
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+    .map((i) => ({ ...i, overdue: i.date < reference }));
+}
 
 export interface AutomationPlan {
   records: Item[];
