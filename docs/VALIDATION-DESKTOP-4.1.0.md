@@ -36,3 +36,7 @@ Em `apps/desktop`: `npm run typecheck`, `npm run lint`, `npm test`, `npm run tes
 Captura sintética: `screenshots/desktop-refinement-reports-4.1.png`. [Auditoria das mudanças](AUDIT-REFINEMENT-4.1.md).
 
 O Firebase de produção não foi novamente modificado/testado nesta versão; os resultados de produção 4.0 não são apresentados como novos ensaios. Login Google humano, celular Android físico, Windows 10, monitores físicos adicionais, suspensão real e aprovação Play Protect permanecem fora da validação. Android continua 2.2.0, sem alteração do contrato ou banco; Firebase Spark e anexos locais permanecem. A assinatura Ed25519 do atualizador não equivale a certificado Authenticode ou aprovação SmartScreen/Play Protect.
+
+## Distribuição confirmada
+
+[Release pública 4.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0), commit de código `0c68f69`. O atualizador na versão 4.0.0 detectou 4.1.0, baixou o instalador público e validou a chave Ed25519 fixada e SHA-256. A release latest Android permaneceu `v2.2.0`. SHA-256 do instalador: `68406f9c909cd6f116c8cfcfcbae568b35ce8046dc19757ed1efe32a651b9ac1`.
