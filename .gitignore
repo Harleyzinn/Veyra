@@ -16,3 +16,10 @@ firebase/.firebase/
 firebase/node_modules/
 firebase/*debug.log
 *.service-account.json
+apps/desktop/node_modules/
+apps/desktop/out/
+apps/desktop/release/
+apps/desktop/resources/firebase.json
+apps/desktop/resources/sql-wasm.wasm
+apps/desktop/.qa/
+*.tsbuildinfo

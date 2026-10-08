@@ -1,4 +1,4 @@
-param([string]$JavaHome = '')
+param([string]$JavaHome = '', [switch]$Desktop)
 $ErrorActionPreference = 'Stop'
 $veyraRoot = Split-Path $PSScriptRoot -Parent
 $veyraIsolated = Join-Path $veyraRoot '.tools/firebase-cli-isolated'
@@ -29,7 +29,8 @@ try {
     $env:Path = "$env:JAVA_HOME\bin;$env:Path"
     Push-Location (Join-Path $veyraRoot 'firebase')
     try {
-        & firebase emulators:exec --project demo-veyra --only auth,firestore,storage 'npm test'
+        $veyraTestCommand = if ($Desktop) { 'npm test && npm --prefix ../apps/desktop run test:sync && npm --prefix ../apps/desktop run test:session' } else { 'npm test' }
+        & firebase emulators:exec --project demo-veyra --only auth,firestore,storage $veyraTestCommand
         if ($LASTEXITCODE -ne 0) { throw "Testes Firebase falharam (código $LASTEXITCODE)." }
     } finally { Pop-Location }
 } finally {

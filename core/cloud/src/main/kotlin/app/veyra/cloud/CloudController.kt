@@ -13,6 +13,7 @@ import app.veyra.data.*
 import app.veyra.model.Item
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +37,9 @@ class CloudController(
     private val accountMutex = Mutex()
     private var debounce: Job? = null
     private var scopeChangeJob: Job? = null
+    private var remoteListener: ListenerRegistration? = null
+    private var remoteListenerUid: String? = null
+    private var remoteMarker: String? = null
     private val mutableState = MutableStateFlow(CloudState(configured = runtime != null, cloudAttachmentsEnabled = BuildConfig.CLOUD_ATTACHMENTS_ENABLED))
     val state = mutableState.asStateFlow()
     private val connectivity = this.context.getSystemService(ConnectivityManager::class.java)
@@ -79,7 +83,42 @@ class CloudController(
                     it.providerData.any { provider -> provider.providerId == "password" })
             }, status = if (uid == null) SyncStatus.LOCAL else if (online()) SyncStatus.SYNCING else SyncStatus.OFFLINE)
             refreshLocalState()
+            if (uid != null && user?.isEmailVerified == true) withContext(Dispatchers.IO) {
+                if (runtime?.auth?.currentUser?.uid == uid) WorkspaceStore(context, WorkspaceIdentity.databaseForUid(uid)).use { store ->
+                    val devicePrefs = context.getSharedPreferences("veyra-device", Context.MODE_PRIVATE)
+                    val deviceId = devicePrefs.getString("id", null) ?: java.util.UUID.randomUUID().toString().also {
+                        devicePrefs.edit().putString("id", it).apply()
+                    }
+                    val old = store.find("device:$deviceId")
+                    val now = System.currentTimeMillis()
+                    if (old == null || now - (old.value("lastSeen").toLongOrNull() ?: 0) > TimeUnit.DAYS.toMillis(1)) {
+                        store.save(Item(id = "device:$deviceId", type = "device", title = "Veyra Life • ${android.os.Build.MODEL}",
+                            date = "", fields = mapOf("deviceId" to deviceId, "platform" to "Android", "lastSeen" to now.toString()),
+                            createdAt = old?.createdAt ?: now))
+                    }
+                }
+            }
+            watchRemote(uid, user?.isEmailVerified == true)
             if (uid != null && runtime?.auth?.currentUser?.uid == uid) { schedule(); onLocalChanged() }
+        }
+    }
+
+    /** Listen to one small change marker, rather than every workspace collection. */
+    private fun watchRemote(uid: String?, verified: Boolean) {
+        val target = uid.takeIf { verified && state.value.syncEnabled }
+        if (remoteListenerUid == target && (target == null || remoteListener != null)) return
+        remoteListener?.remove()
+        remoteListener = null
+        remoteListenerUid = target
+        remoteMarker = null
+        if (target == null) return
+        remoteListener = runtime?.firestore?.collection("users")?.document(target)?.addSnapshotListener { snapshot, error ->
+            if (error != null || remoteListenerUid != target || runtime?.auth?.currentUser?.uid != target || snapshot == null || snapshot.metadata.hasPendingWrites()) return@addSnapshotListener
+            val marker = snapshot.getTimestamp("latestChangeAt")?.let { "${it.seconds}:${it.nanoseconds}" }
+            if (marker != null && marker != remoteMarker) {
+                remoteMarker = marker
+                onLocalChanged()
+            }
         }
     }
 
@@ -231,6 +270,7 @@ class CloudController(
         withContext(Dispatchers.IO) { checkScope(uid); WorkspaceStore(context, WorkspaceIdentity.databaseForUid(uid)).use { it.preference("cloudSyncEnabled", if (enabled) "yes" else "no") } }
         checkScope(uid)
         mutableState.value = state.value.copy(syncEnabled = enabled, status = if (enabled) SyncStatus.SYNCING else SyncStatus.DISABLED)
+        watchRemote(uid, runtime?.auth?.currentUser?.isEmailVerified == true)
         if (enabled) { schedule(); syncNow() } else WorkManager.getInstance(context).cancelAllWorkByTag(WORK_TAG)
     }
 
@@ -350,7 +390,7 @@ class CloudController(
     private fun requireAuth() = auth ?: error("O Firebase ainda não foi configurado neste APK. Veja docs/FIREBASE-SETUP.md.")
     private fun notice(message: String) { mutableState.value = state.value.copy(message = message, error = null) }
     private fun online(): Boolean = connectivity.activeNetwork?.let { network -> connectivity.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } == true
-    override fun close() { debounce?.cancel(); runtime?.auth?.removeAuthStateListener(listener); runCatching { connectivity.unregisterNetworkCallback(networkListener) }; scope.cancel() }
+    override fun close() { remoteListener?.remove(); debounce?.cancel(); runtime?.auth?.removeAuthStateListener(listener); runCatching { connectivity.unregisterNetworkCallback(networkListener) }; scope.cancel() }
 
     companion object {
         const val WORK_TAG = "veyra-cloud-sync"

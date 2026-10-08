@@ -1,10 +1,16 @@
 # Veyra Life
 
-Sua vida, em um só lugar. App Android nativo em Kotlin/Jetpack Compose, criado a partir do Veyra fornecido pelo usuário.
+Sua vida, em um só lugar. Android nativo em Kotlin/Jetpack Compose e aplicativo Windows integrado ao mesmo Firebase e à mesma conta Google.
+
+## Windows + celular
+
+Baixe o [instalador Veyra Life Desktop 3.0.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v3.0.0) e o [APK Android 2.2.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md).
+
+O Android 2.2 recebe mudanças remotas automaticamente enquanto o app está ativo e registra presença dos dispositivos. Nenhum módulo ou banco Android foi reorganizado. O instalador Windows não tem certificado Authenticode comercial; o atualizador usa assinatura Ed25519 e SHA-256.
 
 ## APK e instalação
 
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.1.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.2.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
 
 ## Novidades da versão 2.1
 

@@ -1,0 +1,12 @@
+import {readFileSync,writeFileSync,statSync} from 'node:fs';
+import {sign,verify,createHash} from 'node:crypto';
+const version=process.env.VEYRA_DESKTOP_VERSION;
+if(!/^\d+\.\d+\.\d+$/.test(version||''))throw Error('Versão inválida.');
+const name=`VeyraLife-Setup-${version}.exe`,path=`apps/desktop/release/${name}`;
+const privateKey=readFileSync('.signing/desktop-update-private.pem','utf8');
+const publicKey=readFileSync('apps/desktop/resources/update-public.pem','utf8');
+const payload=JSON.stringify({version,name,url:`https://github.com/Harleyzinn/Veyra/releases/download/desktop-v${version}/${name}`,size:statSync(path).size,sha256:createHash('sha256').update(readFileSync(path)).digest('hex')});
+const signature=sign(null,Buffer.from(payload),privateKey);
+if(!verify(null,Buffer.from(payload),publicKey,signature))throw Error('A chave privada não corresponde à chave pública do aplicativo.');
+writeFileSync('dist/desktop-update.json',JSON.stringify({payload,signature:signature.toString('base64')},null,2));
+console.log('Manifesto assinado e verificado; chave privada preservada fora da distribuição.');

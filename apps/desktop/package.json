@@ -1,0 +1,97 @@
+{
+  "name": "veyra-life-desktop",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Seu espaço pessoal, no computador e no celular.",
+  "author": "Veyra Life",
+  "main": "out/main/index.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "tsx --test tests/*.test.ts",
+    "test:ui": "tsx tests/desktop-ui.ts",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder --win nsis --x64",
+    "test:sync": "tsx --test tests/sync.integration.ts",
+    "test:session": "tsx tests/session-ui.ts",
+    "test:packaged": "tsx tests/packaged-smoke.ts"
+  },
+  "dependencies": {
+    "sql.js": "1.14.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/sql.js": "^1.4.9",
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.39.2",
+    "prettier": "^3.9.9",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.1",
+    "firebase": "13.0.0",
+    "lucide-react": "^0.577.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
+  },
+  "build": {
+    "appId": "app.veyra.life.desktop",
+    "productName": "Veyra Life",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/firebase.json",
+        "to": "firebase.json"
+      },
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      },
+      {
+        "from": "resources/update-public.pem",
+        "to": "update-public.pem"
+      },
+      {
+        "from": "resources/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "resources/tray.png",
+        "to": "tray.png"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "VeyraLife-Setup-${version}.exe",
+      "icon": "resources/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Veyra Life",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": null
+  }
+}
