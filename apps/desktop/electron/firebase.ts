@@ -141,6 +141,7 @@ export function decodeDocument(document: any, uid: string): Remote {
   };
 }
 export class FirebaseClient {
+  metrics = { requests: 0, firestoreReads: 0, firestoreWrites: 0, failures: 0 };
   session: Session | null;
   private refreshing: Promise<void> | null = null;
   constructor(
@@ -165,6 +166,12 @@ export class FirebaseClient {
     headers: Record<string, string> = {},
     method = "POST",
   ) {
+    this.metrics.requests++;
+    if (url.includes("firestore")) {
+      if (method === "GET" || /:(runQuery|batchGet)$/.test(url))
+        this.metrics.firestoreReads++;
+      else this.metrics.firestoreWrites++;
+    }
     const response = await this.fetcher(url, {
       method,
       headers: { "Content-Type": "application/json", ...headers },
@@ -184,6 +191,7 @@ export class FirebaseClient {
       throw Error("Resposta de rede inválida.");
     }
     if (!response.ok) {
+      this.metrics.failures++;
       const e = Error(
         response.status === 401
           ? "Sua sessão precisa ser renovada."
@@ -501,6 +509,8 @@ export class FirebaseClient {
   }
 }
 export class SyncEngine {
+  lastSuccessful = 0;
+  private profileReady = false;
   status = "local";
   error = "";
   private running = false;
@@ -537,7 +547,10 @@ export class SyncEngine {
         this.status = "verification";
         return;
       }
-      await this.client.ensureProfile(uid);
+      if (!this.profileReady) {
+        await this.client.ensureProfile(uid);
+        this.profileReady = true;
+      }
       if (this.stopped) return;
       if (this.vault.meta("bootstrapped") !== "yes") {
         const more = await this.client.pull(uid, this.vault, this.changed);
@@ -582,8 +595,11 @@ export class SyncEngine {
         : counts.pending || more
           ? "pending"
           : "ready";
-      if (this.status === "ready")
-        this.vault.setMeta("lastSync", String(Date.now()));
+      if (this.status === "ready") {
+        this.lastSuccessful = Date.now();
+        if (Date.now() - Number(this.vault.meta("lastSync") || 0) > 300000)
+          this.vault.setMeta("lastSync", String(this.lastSuccessful));
+      }
       this.schedule(more || this.status === "pending" ? 2000 : 30000);
     } catch (e) {
       if (!this.stopped) {

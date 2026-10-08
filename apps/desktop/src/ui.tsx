@@ -233,7 +233,11 @@ export function Field({
     <label className="field">
       <span>{label}</span>
       {options ? (
-        <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <select
+          aria-label={label}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -410,6 +414,7 @@ export function RecordRow({
                 setMenu(false);
                 void api("save", {
                   item: { ...item, favorite: !item.favorite },
+                  base: item,
                 });
               }}
             >
@@ -508,6 +513,24 @@ export function Editor({
       : "",
   );
   const [attachment, setAttachment] = useState<Record<string, string>>({});
+  const savedRef = useRef(false);
+  const existing = !!item && all.some((i) => i.id === item.id);
+  useEffect(() => {
+    if (busy || savedRef.current) return;
+    const timer = setTimeout(() => {
+      if (!savedRef.current && draft.title.trim())
+        void api("draftWrite", {
+          item: {
+            ...draft,
+            fields: { ...draft.fields, ...(value ? { amount: value } : {}) },
+          },
+          expectedUid,
+        }).catch((e) =>
+          setError("Não foi possível guardar o rascunho: " + e.message),
+        );
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [draft, value, busy, expectedUid]);
   const spec = catalog.find((s) => s.type === draft.type);
   const financial = [
     "income",
@@ -579,12 +602,14 @@ export function Editor({
       if (next.date && !validDate(next.date)) throw Error("Data inválida.");
       await api("save", {
         expectedUid,
+        base: existing ? item : undefined,
         item: next,
         installments:
-          !item && !recurring && financial && Number(count) > 1
+          !existing && !recurring && financial && Number(count) > 1
             ? Number(count)
             : undefined,
       });
+      savedRef.current = true;
       onSaved();
       onClose();
     } catch (e) {
@@ -791,8 +816,45 @@ export function Editor({
                     }
                   />
                 ))}
+                {draft.type === "task" && (
+                  <label className="field">
+                    <span>Depende destas tarefas</span>
+                    <select
+                      multiple
+                      aria-label="Dependências da tarefa"
+                      value={(draft.fields.dependencies || "")
+                        .split(",")
+                        .filter(Boolean)}
+                      onChange={(e) =>
+                        field(
+                          "dependencies",
+                          Array.from(e.target.selectedOptions)
+                            .map((o) => o.value)
+                            .join(","),
+                        )
+                      }
+                    >
+                      {all
+                        .filter(
+                          (i) =>
+                            i.type === "task" &&
+                            i.id !== draft.id &&
+                            !i.deletedAt,
+                        )
+                        .map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.title}
+                          </option>
+                        ))}
+                    </select>
+                    <small>
+                      Ctrl + clique seleciona mais de uma. Conclusão exige
+                      dependências concluídas.
+                    </small>
+                  </label>
+                )}
               </div>
-              {financial && !item && (
+              {financial && !existing && (
                 <>
                   <label className="toggle">
                     <input

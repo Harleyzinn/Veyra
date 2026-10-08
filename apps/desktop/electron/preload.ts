@@ -23,6 +23,10 @@ const api: DesktopAPI = {
     ipcRenderer.on("veyra:command", handler);
     return () => ipcRenderer.removeListener("veyra:command", handler);
   },
-  filePath: (file) => webUtils.getPathForFile(file),
+  filePath: (file) => {
+    const path = webUtils.getPathForFile(file);
+    if (path) ipcRenderer.send("veyra:drop", path, scopeUid);
+    return path;
+  },
 };
 contextBridge.exposeInMainWorld("veyra", api);

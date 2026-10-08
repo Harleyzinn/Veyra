@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Boundary } from "./Boundary";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
@@ -13,7 +21,6 @@ import {
   Settings2,
   Search,
   Plus,
-  Command,
   Cloud,
   CloudOff,
   RefreshCw,
@@ -58,21 +65,52 @@ import {
   Field,
   dateLabel,
 } from "./ui";
-import { FinanceView } from "./FinanceView";
+import { habitStats } from "../shared/productivity";
 import {
-  Tasks,
-  Notes,
-  Calendar,
-  Habits,
-  Goals,
-  Focus,
-  habitStats,
-} from "./Productivity";
-import { Settings } from "./Settings";
+  widgetCatalog,
+  defaultDashboard,
+  dailySummary,
+} from "../shared/platform";
+import { reportRows } from "../shared/reporting";
+import { modules } from "../shared/commands";
+import { QuickComposer, CommandPalette } from "./CommandCenter";
+const FinanceView = lazy(() =>
+  import("./FinanceView").then((m) => ({ default: m.FinanceView })),
+);
+const Tasks = lazy(() =>
+  import("./Productivity").then((m) => ({ default: m.Tasks })),
+);
+const Notes = lazy(() => import("./Notes"));
+const Calendar = lazy(() =>
+  import("./Productivity").then((m) => ({ default: m.Calendar })),
+);
+const Habits = lazy(() =>
+  import("./Productivity").then((m) => ({ default: m.Habits })),
+);
+const Goals = lazy(() =>
+  import("./Productivity").then((m) => ({ default: m.Goals })),
+);
+const Focus = lazy(() =>
+  import("./Productivity").then((m) => ({ default: m.Focus })),
+);
+const Settings = lazy(() =>
+  import("./Settings").then((m) => ({ default: m.Settings })),
+);
+const Workspaces = lazy(() => import("./Workspaces"));
+const CommandHome = lazy(() =>
+  import("./Workspaces").then((m) => ({ default: m.CommandHome })),
+);
+const Brief = lazy(() =>
+  import("./Workspaces").then((m) => ({ default: m.Brief })),
+);
+const ExtraWidget = lazy(() =>
+  import("./Workspaces").then((m) => ({ default: m.ExtraWidget })),
+);
 import { VeyraGlassPanel } from "./Glass";
 import { isPanelRole } from "../shared/glass";
 import "./styles.css";
 import "./glass.css";
+import "./platform.css";
 if (isPanelRole(location.hash.slice(1)))
   document.documentElement.dataset.floating = "true";
 const navigation = [
@@ -87,29 +125,8 @@ const navigation = [
   ["focus", "Foco", Timer],
   ["modules", "Explorar", Grid2X2],
 ] as const;
-const widgets = [
-  ["finance", "Seu dinheiro"],
-  ["tasks", "Próximas tarefas"],
-  ["calendar", "Sua agenda"],
-  ["weather", "Seu horizonte"],
-  ["habits", "Hábitos"],
-  ["notes", "Notas recentes"],
-  ["goals", "Metas"],
-  ["clock", "Hora e data"],
-  ["insights", "Insights"],
-  ["quick", "Captura rápida"],
-  ["focus", "Foco"],
-  ["spending", "Gastos do dia"],
-  ["shortcuts", "Atalhos"],
-] as const;
-const defaultLayout = [
-  { id: "finance", size: "wide" },
-  { id: "tasks", size: "normal" },
-  { id: "weather", size: "normal" },
-  { id: "calendar", size: "normal" },
-  { id: "habits", size: "normal" },
-  { id: "notes", size: "wide" },
-];
+const widgets = widgetCatalog;
+const defaultLayout = defaultDashboard;
 const syncLabels: Record<string, string> = {
   local: "Neste PC",
   ready: "Sincronizado",
@@ -134,8 +151,20 @@ function App() {
   const setEditor = (value: { item?: Item; type: string } | null) =>
     setEditorState(value ? { ...value, uid: data?.uid } : null);
   const [palette, setPalette] = useState(false);
+  const [quickAdd, setQuickAdd] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   const [toast, setToast] = useState("");
+  const [undo, setUndo] = useState<{ id: string; until: number } | null>(null);
+  useEffect(() => {
+    const action = data?.desktop.lastUndo;
+    if (!action || action.until <= Date.now()) {
+      setUndo(null);
+      return;
+    }
+    setUndo(action);
+    const timeout = setTimeout(() => setUndo(null), action.until - Date.now());
+    return () => clearTimeout(timeout);
+  }, [data?.desktop.lastUndo?.id, data?.desktop.lastUndo?.until, data?.uid]);
   const [quickClosing, setQuickClosing] = useState(false);
   const [clipboard, setClipboard] = useState("");
   const [dropPath, setDropPath] = useState("");
@@ -143,7 +172,14 @@ function App() {
   const refresh = useCallback(async () => {
     try {
       const snapshot: Snapshot = await api("snapshot", { month, days });
-      setData(snapshot);
+      setData((previous) => ({
+        ...snapshot,
+        items:
+          previous?.uid === snapshot.uid &&
+          previous.desktop.dataVersion === snapshot.desktop.dataVersion
+            ? previous.items
+            : snapshot.items,
+      }));
     } catch (e) {
       setToast(cleanError(e));
     }
@@ -166,6 +202,7 @@ function App() {
     if (previousUid.current !== undefined) {
       setEditor(null);
       setPalette(false);
+      setQuickAdd(false);
       setClipboard("");
       setDropPath("");
     }
@@ -183,21 +220,42 @@ function App() {
       await api("capture", { id: item.id });
       return;
     }
+    const identity = data?.uid;
     const full: Item = await api("item", item.id);
+    if (currentData.current?.uid !== identity) return;
     setEditor({ type: item.type, item: full || item });
   };
   const navigate = (next: string) => {
     if (["main", "notes"].includes(role)) setPage(next);
     else void api("navigate", next);
   };
+  const currentData = useRef(data);
+  currentData.current = data;
+  const choose = (item: Item) => {
+    setQuickAdd(false);
+    setPalette(false);
+    setEditorState({ type: item.type, item, uid: currentData.current?.uid });
+  };
   const runCommand = useCallback((command: string) => {
+    const identity = currentData.current?.uid;
     if (command.startsWith("edit:"))
       void api("item", command.slice(5)).then((item) => {
-        if (item) setEditor({ type: item.type, item });
+        if (item && currentData.current?.uid === identity)
+          setEditorState({
+            type: item.type,
+            item,
+            uid: currentData.current?.uid,
+          });
       });
-    else if (command.startsWith("new:")) setEditor({ type: command.slice(4) });
-    else if (command === "capture") setEditor(null);
-    else if (command === "palette") setPalette(true);
+    else if (command.startsWith("new:"))
+      setEditorState({ type: command.slice(4), uid: currentData.current?.uid });
+    else if (command === "capture") {
+      setEditor(null);
+      setPalette(false);
+    } else if (command === "spotlight") {
+      setEditor(null);
+      setPalette(true);
+    } else if (command === "palette") setPalette(true);
     else setPage(command);
   }, []);
   useEffect(() => window.veyra.onCommand(runCommand), [runCommand]);
@@ -206,6 +264,29 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPalette((v) => !v);
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === "n"
+      ) {
+        e.preventDefault();
+        setQuickAdd(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setPage("favorites");
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        ["t", "g", "n"].includes(e.key.toLowerCase())
+      ) {
+        e.preventDefault();
+        setEditorState({
+          type: (
+            { t: "task", g: "expense", n: "note" } as Record<string, string>
+          )[e.key.toLowerCase()],
+          uid: currentData.current?.uid,
+        });
       }
     };
     const error = (event: PromiseRejectionEvent) => {
@@ -241,6 +322,10 @@ function App() {
     };
     applyTheme();
     media.addEventListener("change", applyTheme);
+    document.documentElement.dataset.performance =
+      data.desktop.performanceMode || "auto";
+    document.documentElement.dataset.animations =
+      data.desktop.animations === false ? "off" : "on";
     document.documentElement.dataset.accent = data.desktop.accent || "violet";
     document.documentElement.dataset.density =
       data.desktop.density || "comfortable";
@@ -249,6 +334,8 @@ function App() {
     return () => media.removeEventListener("change", applyTheme);
   }, [
     data?.desktop.theme,
+    data?.desktop.performanceMode,
+    data?.desktop.animations,
     data?.desktop.accent,
     data?.desktop.scale,
     data?.desktop.density,
@@ -265,7 +352,6 @@ function App() {
     );
   const hidden =
     data.preferences.financeHidden === "yes" ||
-    data.preferences.financeHideValues === "yes" ||
     data.preferences.financeHideValues === "yes";
   const cash = (n: number) =>
     data.finance.error
@@ -279,6 +365,7 @@ function App() {
     "você";
   const complete = (i: Item) =>
     void api("save", {
+      base: i,
       item: {
         ...i,
         done: !i.done,
@@ -337,16 +424,23 @@ function App() {
     ];
     return (
       <VeyraGlassPanel role={role} data={data} exiting={quickClosing}>
-        {role === "quick" ? (
-          <QuickLanding
-            choose={(type, title) =>
-              setEditor({
-                type,
-                item: title ? createItem(type, { title }) : undefined,
-              })
-            }
-            editor={!!editor}
-          />
+        {role === "brief" ? (
+          <Suspense fallback={null}>
+            <Brief data={data} go={navigate} cash={cash} />
+          </Suspense>
+        ) : role === "quick" ? (
+          palette ? (
+            <CommandPalette
+              data={data}
+              inline
+              open={open}
+              choose={choose}
+              go={navigate}
+              close={() => setPalette(false)}
+            />
+          ) : !editor ? (
+            <QuickComposer data={data} choose={choose} />
+          ) : null
         ) : role === "widget-focus" || role === "widget-timer" ? (
           <CompactFocus data={data} stopwatch={role === "widget-timer"} />
         ) : role === "mini" || role === "dock" ? (
@@ -444,28 +538,36 @@ function App() {
         </button>
         <div className="nav-caption">SEU ESPAÇO</div>
         <nav>
-          {navigation.map(([id, title, Icon]) => (
-            <button
-              key={id}
-              className={page === id ? "active" : ""}
-              onClick={() => setPage(id)}
-            >
-              <Icon size={18} />
-              {title}
-              {id === "tasks" &&
-                data.items.some((i) => i.type === "task" && !i.done) && (
-                  <span className="nav-count">
-                    {
-                      data.items.filter((i) => i.type === "task" && !i.done)
-                        .length
-                    }
-                  </span>
-                )}
-            </button>
-          ))}
+          {modules.map(({ id, label: title, group }, n) => {
+            const Icon = navigation.find(([key]) => key === id)?.[2] || Grid2X2;
+            return (
+              <React.Fragment key={id}>
+                {n === 0 || modules[n - 1].group !== group ? (
+                  <div className="nav-group-label">{group}</div>
+                ) : null}
+                <button
+                  key={id}
+                  className={page === id ? "active" : ""}
+                  onClick={() => setPage(id)}
+                >
+                  <Icon size={18} />
+                  {title}
+                  {id === "tasks" &&
+                    data.items.some((i) => i.type === "task" && !i.done) && (
+                      <span className="nav-count">
+                        {
+                          data.items.filter((i) => i.type === "task" && !i.done)
+                            .length
+                        }
+                      </span>
+                    )}
+                </button>
+              </React.Fragment>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
-          <button className="shortcut-card" onClick={() => create("task")}>
+          <button className="shortcut-card" onClick={() => setQuickAdd(true)}>
             <Plus size={18} />
             <div>
               <strong>Capture uma ideia</strong>
@@ -492,7 +594,7 @@ function App() {
             Meu espaço <span>/</span>{" "}
             {page === "settings"
               ? "Configurações"
-              : navigation.find(([id]) => id === page)?.[1] || "Central"}
+              : modules.find((m) => m.id === page)?.label || "Central"}
           </div>
           <button className="global-search" onClick={() => setPalette(true)}>
             <Search size={16} />
@@ -502,10 +604,10 @@ function App() {
           <div
             className={"sync-indicator " + data.sync.status}
             title={data.sync.error || "Sincronização automática"}
-            onClick={() => setPage("settings")}
+            onClick={() => setPage("sync")}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && setPage("settings")}
+            onKeyDown={(e) => e.key === "Enter" && setPage("sync")}
           >
             {data.sync.status === "syncing" ? (
               <RefreshCw size={13} className="spin" />
@@ -524,7 +626,7 @@ function App() {
           >
             <Monitor size={17} />
           </IconButton>
-          <IconButton label="Captura rápida" onClick={() => create("task")}>
+          <IconButton label="Captura rápida" onClick={() => setQuickAdd(true)}>
             <Plus size={20} />
           </IconButton>
         </header>
@@ -535,44 +637,87 @@ function App() {
             (page === "focus" && data.focus.active ? "focus-mode" : "")
           }
         >
-          {["home", "day"].includes(page) ? (
-            <Dashboard
-              data={data}
-              dayMode={page === "day"}
-              shortName={shortName}
-              open={open}
-              create={create}
-              go={setPage}
-              cash={cash}
-              complete={complete}
-            />
-          ) : page === "finance" ? (
-            <FinanceView
-              data={data}
-              open={open}
-              create={create}
-              month={month}
-              setMonth={setMonth}
-              days={days}
-              setDays={setDays}
-            />
-          ) : page === "tasks" ? (
-            <Tasks data={data} open={open} create={create} />
-          ) : page === "notes" ? (
-            <Notes data={data} create={create} />
-          ) : page === "calendar" ? (
-            <Calendar data={data} open={open} create={create} />
-          ) : page === "habits" ? (
-            <Habits data={data} open={open} create={create} />
-          ) : page === "goals" ? (
-            <Goals data={data} open={open} create={create} />
-          ) : page === "focus" ? (
-            <Focus data={data} />
-          ) : page === "settings" ? (
-            <Settings data={data} onLogin={() => setOnboarding(true)} />
-          ) : (
-            <Modules data={data} open={open} create={create} />
-          )}
+          <Boundary key={(data.uid || "guest") + page}>
+            <Suspense
+              fallback={
+                <div className="module-skeleton" aria-label="Carregando módulo">
+                  <i />
+                  <i />
+                  <i />
+                </div>
+              }
+            >
+              {["home", "day"].includes(page) ? (
+                <Dashboard
+                  data={data}
+                  dayMode={page === "day"}
+                  shortName={shortName}
+                  open={open}
+                  create={create}
+                  go={setPage}
+                  cash={cash}
+                  complete={complete}
+                />
+              ) : page === "finance" ? (
+                <FinanceView
+                  data={data}
+                  open={open}
+                  create={create}
+                  month={month}
+                  setMonth={setMonth}
+                  days={days}
+                  setDays={setDays}
+                />
+              ) : page === "tasks" ? (
+                <Tasks data={data} open={open} create={create} />
+              ) : page === "notes" ? (
+                <Notes data={data} create={create} />
+              ) : page === "calendar" ? (
+                <Calendar data={data} open={open} create={create} />
+              ) : page === "habits" ? (
+                <Habits data={data} open={open} create={create} />
+              ) : page === "goals" ? (
+                <Goals data={data} open={open} create={create} />
+              ) : page === "focus" ? (
+                <Focus data={data} />
+              ) : [
+                  "inbox",
+                  "projects",
+                  "planner",
+                  "review",
+                  "automations",
+                  "templates",
+                  "notifications",
+                  "sync",
+                  "diagnostics",
+                  "recent",
+                  "favorites",
+                ].includes(page) ? (
+                <Workspaces
+                  page={page}
+                  data={data}
+                  open={open}
+                  create={create}
+                  choose={choose}
+                  go={navigate}
+                />
+              ) : ["settings", "backup", "privacy"].includes(page) ? (
+                <Settings
+                  data={data}
+                  initialTab={
+                    page === "backup"
+                      ? "Dados"
+                      : page === "privacy"
+                        ? "Privacidade"
+                        : undefined
+                  }
+                  onLogin={() => setOnboarding(true)}
+                />
+              ) : (
+                <Modules data={data} open={open} create={create} />
+              )}
+            </Suspense>
+          </Boundary>
           <footer className="content-footer">
             <span>Um pouco de ordem. Muito mais possibilidades.</span>
             <span>Veyra Life · {data.version}</span>
@@ -580,16 +725,32 @@ function App() {
         </main>
       </section>
       {editorNode}
+      {undo && (
+        <div className="undo-toast" role="status">
+          <span>Registro movido para a lixeira</span>
+          <Button
+            onClick={() =>
+              void api("restore", undo.id).then(() => setUndo(null))
+            }
+          >
+            Desfazer
+          </Button>
+        </div>
+      )}
       {palette && (
-        <Palette
+        <CommandPalette
           data={data}
-          capture={setClipboard}
           close={() => setPalette(false)}
           open={open}
-          create={create}
+          choose={choose}
           go={navigate}
         />
-      )}{" "}
+      )}
+      {quickAdd && (
+        <Modal title="Captura universal" onClose={() => setQuickAdd(false)}>
+          <QuickComposer data={data} choose={choose} />
+        </Modal>
+      )}
       {onboarding && (
         <Onboarding data={data} close={() => setOnboarding(false)} />
       )}{" "}
@@ -724,7 +885,7 @@ function Dashboard({
   complete: (i: Item) => void;
 }) {
   const [customize, setCustomize] = useState(false);
-  const layout: { id: string; size: string }[] =
+  const layout: { id: string; size: string; height?: number }[] =
     data.desktop.layout || defaultLayout;
   const tasks = data.items.filter(
     (i) => i.type === "task" && !i.done && i.date === today(),
@@ -796,6 +957,9 @@ function Dashboard({
           </Button>
         </div>
       </div>
+      <Suspense fallback={null}>
+        <CommandHome data={data} open={open} go={go} cash={cash} />
+      </Suspense>
       <div className="day-strip">
         <span>
           <i className="dot mint" />
@@ -819,22 +983,86 @@ function Dashboard({
       {customize && (
         <Panel
           title="Sua central, do seu jeito"
-          subtitle="Arraste os cards para reorganizar e escolha o tamanho no menu."
+          subtitle="Galeria de widgets com prévia. Arraste para reorganizar ou use os controles de posição."
         >
-          <div className="widget-options">
-            {widgets.map(([id, title]) => (
-              <Button
-                key={id}
-                disabled={layout.some((w) => w.id === id)}
-                onClick={() =>
-                  void api("desktop", {
-                    layout: [...layout, { id, size: "normal" }],
-                  })
-                }
-              >
-                <Plus size={14} />
-                {title}
-              </Button>
+          <div className="actions">
+            <Button
+              onClick={() => void api("desktop", { layout: defaultLayout })}
+            >
+              Restaurar layout padrão
+            </Button>
+          </div>
+          <div className="widget-gallery">
+            {[...new Set(widgets.map((w) => w[2]))].map((category) => (
+              <section key={category}>
+                <h3>{category}</h3>
+                {widgets
+                  .filter((w) => w[2] === category)
+                  .map(([id, title]) => (
+                    <button
+                      className="gallery-card"
+                      key={id}
+                      disabled={layout.some((w) => w.id === id)}
+                      onClick={() =>
+                        void api("desktop", {
+                          layout: [...layout, { id, size: "normal" }],
+                        })
+                      }
+                    >
+                      <div className="gallery-preview" aria-hidden="true">
+                        <span>{title}</span>
+                        <strong>
+                          {id === "finance"
+                            ? cash(data.finance.balance)
+                            : id === "tasks"
+                              ? data.items.filter(
+                                  (i) => i.type === "task" && !i.done,
+                                ).length + " em aberto"
+                              : id === "clock"
+                                ? new Date().toLocaleTimeString("pt-BR", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : id === "notes"
+                                  ? data.items.filter((i) => i.type === "note")
+                                      .length + " notas"
+                                  : id === "habits"
+                                    ? data.items.filter(
+                                        (i) => i.type === "habit",
+                                      ).length + " hábitos"
+                                    : id === "weather"
+                                      ? data.desktop.weather?.temperature
+                                        ? data.desktop.weather.temperature +
+                                          "°C"
+                                        : "Escolher cidade"
+                                      : id === "inbox"
+                                        ? data.items.filter(
+                                            (i) =>
+                                              i.type === "inbox" && !i.done,
+                                          ).length + " capturas"
+                                        : id === "focus"
+                                          ? data.focus.active
+                                            ? data.focus.title
+                                            : "25:00"
+                                          : id === "spending"
+                                            ? "Resumo de hoje"
+                                            : id === "calendar"
+                                              ? "Próximos compromissos"
+                                              : id === "bills"
+                                                ? "Vencimentos e previsão"
+                                                : "Seus dados, seu contexto"}
+                        </strong>
+                        <i />
+                      </div>
+                      <strong>{title}</strong>
+                      <small>
+                        {layout.some((w) => w.id === id)
+                          ? "Adicionado"
+                          : "Adicionar widget"}
+                      </small>
+                    </button>
+                  ))}
+              </section>
             ))}
           </div>
         </Panel>
@@ -867,12 +1095,25 @@ function Dashboard({
         </Panel>
       )}
       <div className="dashboard-grid">
-        {layout.map((w) => (
+        {layout.map((w, position) => (
           <div
             className={
               "dashboard-widget " + w.size + " " + (customize ? "editable" : "")
             }
             key={w.id}
+            style={w.height ? { height: w.height } : undefined}
+            onPointerUp={(e) => {
+              if (!customize) return;
+              const node = e.currentTarget;
+              if (!node.style.height) return;
+              const height = Math.round(node.getBoundingClientRect().height);
+              if (Math.abs(height - (w.height || 180)) > 2)
+                void api("desktop", {
+                  layout: layout.map((i) =>
+                    i.id === w.id ? { ...i, height } : i,
+                  ),
+                });
+            }}
             draggable={customize}
             onDragStart={(e) =>
               e.dataTransfer.setData("application/veyra-widget", w.id)
@@ -885,6 +1126,32 @@ function Dashboard({
             {customize && (
               <div className="widget-controls">
                 <GripVertical size={14} />
+                <Button
+                  disabled={position === 0}
+                  onClick={() => {
+                    const next = [...layout];
+                    [next[position - 1], next[position]] = [
+                      next[position],
+                      next[position - 1],
+                    ];
+                    void api("desktop", { layout: next });
+                  }}
+                >
+                  ←
+                </Button>
+                <Button
+                  disabled={position === layout.length - 1}
+                  onClick={() => {
+                    const next = [...layout];
+                    [next[position + 1], next[position]] = [
+                      next[position],
+                      next[position + 1],
+                    ];
+                    void api("desktop", { layout: next });
+                  }}
+                >
+                  →
+                </Button>
                 <select
                   value={w.size}
                   aria-label={"Tamanho de " + w.id}
@@ -951,6 +1218,12 @@ function Widget({
       <ArrowUpRight size={17} />
     </IconButton>
   );
+  if (["bills", "inbox", "recent-spending", "progress"].includes(id))
+    return (
+      <Suspense fallback={null}>
+        <ExtraWidget id={id} data={data} open={open} go={go} cash={cash} />
+      </Suspense>
+    );
   if (id === "finance")
     return (
       <Panel
@@ -1331,26 +1604,70 @@ function FloatingModule({
           {cash(
             id === "finance"
               ? data.finance.balance
-              : data.items
-                  .filter(
-                    (i) =>
-                      i.type === "expense" &&
-                      i.date === today() &&
-                      (i.fields.currency || data.finance.currency) ===
-                        data.finance.currency &&
-                      ["paid", "Pago", ""].includes(i.fields.status || ""),
-                  )
-                  .reduce((n, i) => n + amount(i), 0),
+              : reportRows(data.items, {
+                  from: today(),
+                  to: today(),
+                  currency: data.finance.currency,
+                }).expense,
           )}
         </strong>
         <small>
           {data.finance.currency} ·{" "}
           {id === "finance"
             ? "Suas contas, em equilíbrio"
-            : "Registros pagos de hoje"}
+            : "Gastos reconhecidos hoje"}
         </small>
       </section>
     );
+  if (["bills", "inbox", "progress", "recent-spending"].includes(id)) {
+    const summary = dailySummary(data.items, today(), data.finance.currency);
+    const list =
+      id === "bills"
+        ? summary.bills
+        : id === "inbox"
+          ? summary.inbox
+          : id === "recent-spending"
+            ? data.items
+                .filter(
+                  (i) =>
+                    i.type === "expense" &&
+                    i.fields.paymentType !== "card_payment",
+                )
+                .sort((a, b) => b.createdAt - a.createdAt)
+            : data.items.filter(
+                (i) =>
+                  i.type === "task" && i.date.startsWith(today().slice(0, 7)),
+              );
+    const label =
+      id === "bills"
+        ? "Contas próximas"
+        : id === "inbox"
+          ? "Caixa de entrada"
+          : id === "progress"
+            ? "Progresso do mês"
+            : "Gastos recentes";
+    return (
+      <section className="floating-tile">
+        {heading(
+          label,
+          id === "inbox" ? "inbox" : id === "progress" ? "review" : "finance",
+        )}
+        {id === "progress" ? (
+          <strong className="tile-value">
+            {list.filter((i) => i.done).length}/{list.length}
+          </strong>
+        ) : (
+          list.slice(0, 3).map((i) => (
+            <p className="tile-text" key={i.id}>
+              {i.title}
+            </p>
+          ))
+        )}
+        {!list.length && <p>Nenhuma pendência por aqui.</p>}
+        <small>{list.length} registros</small>
+      </section>
+    );
+  }
   if (id === "tasks") {
     const list = data.items
       .filter((i) => i.type === "task" && !i.done)
@@ -1496,60 +1813,6 @@ function FloatingModule({
         <Button onClick={() => go("day")}>Meu dia</Button>
       </div>
     </section>
-  );
-}
-function QuickLanding({
-  choose,
-  editor,
-}: {
-  choose: (type: string, title: string) => void;
-  editor: boolean;
-}) {
-  const [text, setText] = useState("");
-  if (editor) return null;
-  const choices = [
-    ["task", "Tarefa", CheckSquare],
-    ["expense", "Gasto", Wallet],
-    ["income", "Entrada", ArrowUpRight],
-    ["note", "Nota", FileText],
-    ["event", "Evento", CalendarDays],
-  ] as const;
-  return (
-    <div className="glass-capture">
-      <div className="eyebrow">UMA IDEIA, UM SEGUNDO</div>
-      <h1>O que você quer registrar?</h1>
-      <p>Guarde agora. Organize no seu tempo.</p>
-      <div className="glass-capture-input">
-        <Search size={19} />
-        <input
-          autoFocus
-          aria-label="Digite uma ação"
-          placeholder="Digite uma ideia ou escolha uma ação…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") choose("task", text);
-          }}
-        />
-        <kbd>↵</kbd>
-      </div>
-      <div className="glass-capture-choices">
-        {choices.map(([type, title, Icon], n) => (
-          <button key={type} onClick={() => choose(type, text)}>
-            <span>
-              <Icon size={21} />
-            </span>
-            <strong>{title}</strong>
-            <small>{n === 0 ? "Tire da cabeça" : "Registrar"}</small>
-            <ArrowUpRight size={16} />
-          </button>
-        ))}
-      </div>
-      <footer>
-        <span>Ctrl + Shift + Space</span>
-        <span>Esc para sair</span>
-      </footer>
-    </div>
   );
 }
 function MicroWidget({
@@ -1786,160 +2049,33 @@ function Weather({ data }: { data: Snapshot }) {
     </Panel>
   );
 }
-function Palette({
-  capture,
-  data,
-  close,
-  open,
-  create,
-  go,
-}: {
-  capture: (text: string) => void;
-  data: Snapshot;
-  close: () => void;
-  open: (i: Item) => void;
-  create: (s: string) => void;
-  go: (s: string) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Item[]>([]);
-  const [index, setIndex] = useState(0);
-  const commands = [
-    ...navigation.map(([id, title]) => ({
-      title: "Abrir " + title,
-      run: () => go(id),
-    })),
-    ...["task", "expense", "income", "note", "event", "inbox"].map((type) => ({
-      title: "Novo registro · " + (labels[type] || type),
-      run: () => create(type),
-    })),
-    { title: "Abrir configurações", run: () => go("settings") },
-    { title: "Iniciar foco", run: () => go("focus") },
-    { title: "Criar backup", run: () => void api("backup") },
-    { title: "Sincronizar agora", run: () => void api("sync") },
-    {
-      title: "Alternar tema",
-      run: () =>
-        void api("desktop", {
-          theme:
-            document.documentElement.dataset.theme === "dark"
-              ? "light"
-              : "dark",
-        }),
-    },
-    {
-      title: "Capturar texto copiado",
-      run: () => {
-        void api("clipboard").then((text) => {
-          if (text) capture(text);
-        });
-      },
-    },
-  ];
-  const filtered = commands.filter((c) =>
-    c.title.toLowerCase().includes(query.toLowerCase()),
-  );
-  useEffect(() => {
-    let live = true;
-    setIndex(0);
-    if (!query) {
-      setResults([]);
-      return;
-    }
-    const timer = setTimeout(
-      () =>
-        void api("search", {
-          query: query.toLowerCase() === "hoje" ? today() : query,
-          limit: 20,
-        }).then((r) => {
-          if (live) setResults(r.items);
-        }),
-      100,
-    );
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [query]);
-  const choices = [
-    ...filtered.map((c) => ({ title: c.title, kind: "Comando", run: c.run })),
-    ...results.map((i) => ({
-      title: i.title,
-      kind: labels[i.type] || i.type,
-      run: () => void open(i),
-    })),
-  ];
-  return (
-    <Modal title="Pesquisa e comandos" onClose={close}>
-      <div className="palette">
-        <label>
-          <Search size={22} />
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Netflix, academia, uma ideia…"
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setIndex((n) => Math.min(choices.length - 1, n + 1));
-              }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setIndex((n) => Math.max(0, n - 1));
-              }
-              if (e.key === "Enter" && choices[index]) {
-                choices[index].run();
-                close();
-              }
-            }}
-          />
-          <kbd>Esc</kbd>
-        </label>
-        <div className="palette-results">
-          {choices.slice(0, 35).map((c, n) => (
-            <button
-              className={n === index ? "active" : ""}
-              onMouseEnter={() => setIndex(n)}
-              key={c.kind + c.title + n}
-              onClick={() => {
-                c.run();
-                close();
-              }}
-            >
-              <span className="command-icon">
-                {c.kind === "Comando" ? (
-                  <Command size={15} />
-                ) : (
-                  <FileText size={15} />
-                )}
-              </span>
-              <span>
-                {c.title}
-                <small>{c.kind}</small>
-              </span>
-              <ArrowUpRight size={14} />
-            </button>
-          ))}
-          {!choices.length && (
-            <Empty
-              title="Nenhum resultado"
-              detail="Tente outra palavra ou descrição."
-            />
-          )}
-        </div>
-        <footer>
-          <span>↑ ↓ Navegar</span>
-          <span>↵ Abrir</span>
-          <span>{data.items.length} registros no seu espaço</span>
-        </footer>
-      </div>
-    </Modal>
-  );
-}
 function Onboarding({ data, close }: { data: Snapshot; close: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [profile, setProfile] = useState(
+    data.desktop.onboardingProfile || "all",
+  );
+  const configureProfile = async () => {
+    const fresh: Snapshot = await api("snapshot");
+    if (fresh.desktop.welcomeSeen) return;
+    const layouts: Record<string, string[]> = {
+      finance: ["finance", "bills", "spending", "insights"],
+      productivity: ["tasks", "calendar", "focus", "notes"],
+      studies: ["tasks", "focus", "notes", "goals"],
+      organization: ["calendar", "habits", "inbox", "notes"],
+    };
+    await api("desktop", {
+      onboardingProfile: profile,
+      welcomeSeen: true,
+      layout:
+        profile === "all"
+          ? defaultLayout
+          : layouts[profile].map((id) => ({
+              id,
+              size: id === "finance" ? "wide" : "normal",
+            })),
+    });
+  };
   const [emailMode, setEmailMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1948,6 +2084,7 @@ function Onboarding({ data, close }: { data: Snapshot; close: () => void }) {
     setError("");
     try {
       await api(method, value);
+      await configureProfile();
       close();
     } catch (e) {
       setError(cleanError(e));
@@ -1966,6 +2103,18 @@ function Onboarding({ data, close }: { data: Snapshot; close: () => void }) {
           Entre com a mesma conta do celular. Seu financeiro, suas tarefas e
           suas ideias acompanham você.
         </p>
+        <Field
+          label="Como você pretende usar o Veyra?"
+          value={profile}
+          onChange={setProfile}
+          options={[
+            { value: "all", label: "Tudo" },
+            { value: "finance", label: "Finanças" },
+            { value: "productivity", label: "Produtividade" },
+            { value: "studies", label: "Estudos" },
+            { value: "organization", label: "Organização" },
+          ]}
+        />
         {data.user ? (
           <>
             <div className="account-profile">
@@ -2016,11 +2165,7 @@ function Onboarding({ data, close }: { data: Snapshot; close: () => void }) {
                 </Button>
               </form>
             )}
-            <Button
-              onClick={() =>
-                void api("desktop", { welcomeSeen: true }).then(close)
-              }
-            >
+            <Button onClick={() => void configureProfile().then(close)}>
               Continuar no espaço visitante
             </Button>
           </>
@@ -2226,4 +2371,8 @@ function CompactFocus({
     </div>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <Boundary>
+    <App />
+  </Boundary>,
+);

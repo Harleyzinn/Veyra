@@ -31,12 +31,17 @@ const tabItems = [
 export function Settings({
   data,
   onLogin,
+  initialTab,
 }: {
   data: Snapshot;
   onLogin: () => void;
+  initialTab?: string;
 }) {
   const [backupPassword, setBackupPassword] = useState("");
-  const [tab, setTab] = useState("Conta");
+  const [tab, setTab] = useState(initialTab || "Conta");
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [preview, setPreview] = useState<any>(null);
   const [replace, setReplace] = useState(false);
@@ -50,6 +55,7 @@ export function Settings({
     note: "CommandOrControl+Alt+N",
     focus: "CommandOrControl+Alt+F",
     recover: "CommandOrControl+Shift+R",
+    spotlight: "CommandOrControl+Alt+Space",
     ...data.desktop.shortcuts,
   });
   const [shortcutResult, setShortcutResult] = useState("");
@@ -379,10 +385,30 @@ export function Settings({
           )}
           {tab === "Aparência" && (
             <Panel
-              title="Veyra Design System"
+              title="Veyra Design Language"
               subtitle="Mais espaço para trabalhar, do seu jeito"
             >
+              <Toggle
+                label="Animações discretas"
+                checked={data.desktop.animations !== false}
+                change={(v) => setDesktop("animations", v)}
+              />
+              <Toggle
+                label="Sugestões contextuais na Home"
+                checked={data.desktop.smartHints !== false}
+                change={(v) => setDesktop("smartHints", v)}
+              />
               <div className="form-grid">
+                <Field
+                  label="Desempenho"
+                  value={data.desktop.performanceMode || "auto"}
+                  onChange={(v) => setDesktop("performanceMode", v)}
+                  options={[
+                    { value: "auto", label: "Automático" },
+                    { value: "quality", label: "Qualidade" },
+                    { value: "economy", label: "Economia" },
+                  ]}
+                />
                 <Field
                   label="Tema"
                   value={
@@ -448,6 +474,7 @@ export function Settings({
                         note: "Nova nota",
                         focus: "Foco",
                         recover: "Recuperar painéis",
+                        spotlight: "Veyra Spotlight",
                       }[name] || name
                     }
                     value={String(key)}
@@ -487,6 +514,29 @@ export function Settings({
           {tab === "Windows" && (
             <>
               <Panel title="Um companheiro discreto">
+                <Toggle
+                  label="Mostrar Morning Brief ao iniciar com Windows"
+                  checked={!!data.desktop.morningBrief}
+                  change={(v) => setDesktop("morningBrief", v)}
+                />
+                <Toggle
+                  label="Resumo opcional do dia às 21h"
+                  checked={!!data.desktop.dailyReview}
+                  change={(v) => setDesktop("dailyReview", v)}
+                />
+                <Toggle
+                  label="Revisão semanal aos domingos às 18h"
+                  checked={!!data.desktop.weeklyReview}
+                  change={(v) => setDesktop("weeklyReview", v)}
+                />
+                <div className="actions">
+                  <Button onClick={() => void api("dockPosition", "left")}>
+                    Dock à esquerda
+                  </Button>
+                  <Button onClick={() => void api("dockPosition", "right")}>
+                    Dock à direita
+                  </Button>
+                </div>
                 <Toggle
                   label="Iniciar com o Windows"
                   checked={!!data.desktop.startWindows}

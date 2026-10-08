@@ -23,6 +23,13 @@ export interface PanelSettings {
   normalBounds?: Rect;
 }
 export const panelSpecs = {
+  brief: {
+    title: "Seu dia",
+    width: 440,
+    height: 500,
+    compactHeight: 330,
+    micro: false,
+  },
   mini: {
     title: "Seu Veyra",
     width: 390,

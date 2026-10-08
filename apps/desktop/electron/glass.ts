@@ -3,6 +3,7 @@ import {
   screen,
   nativeTheme,
   systemPreferences,
+  powerMonitor,
 } from "electron";
 import { release } from "node:os";
 import {
@@ -173,6 +174,11 @@ export class VeyraGlassWindows {
           shaped &&
           !settings.reducedEffects &&
           !this.read().reducedEffects &&
+          this.read().performanceMode !== "economy" &&
+          !(
+            this.read().performanceMode === "auto" &&
+            powerMonitor.isOnBatteryPower()
+          ) &&
           !nativeTheme.shouldUseHighContrastColors &&
           !nativeTheme.prefersReducedTransparency;
         w.setBackgroundMaterial(acrylic ? "acrylic" : "none");
@@ -403,7 +409,8 @@ export class VeyraGlassWindows {
       throw Error("Ação de painéis inválida.");
     if (action === "restore") {
       for (const role of Object.keys(panelSpecs) as PanelRole[])
-        if (role !== "quick" && this.settings(role).enabled) this.open(role);
+        if (role !== "quick" && role !== "brief" && this.settings(role).enabled)
+          this.open(role);
       return true;
     }
     for (const [role, w] of this.windows)

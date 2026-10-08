@@ -49,3 +49,9 @@ Transparência usa janela sem frame e fundo transparente, sem captura do desktop
 ## Limites de dados
 
 O cache criptografado de sql.js é exportado inteiro por transação; os testes desta versão validam recuperação e integridade, não garantem latência constante com dezenas de milhares de anexos. Busca e movimentos financeiros são paginados; listas de widgets são limitadas e o snapshot preserva texto completo para evitar truncar notas ao concluir/favoritar um registro. Escalabilidade maior pode exigir SQLite nativo criptografado e assinatura comercial Windows, sem alterar o protocolo remoto.
+
+## Evolução 4.0
+
+Catálogos explícitos de navegação/captura/widgets em shared; parser, filtros SQL, ligações, dependências e automações determinísticas; relatórios filtrados/CSV; desktopPatch valida preferências. O renderer carrega módulos ESM sob demanda. Cache de itens/finanças é invalidado por versão/UID/período, sem confundir metadados de janelas com alterações de domínio.
+
+Rascunhos criptografados usam metadados existentes e limites; saves com base recusam sobrescrita concorrente. Anexos sobrevivem a atualizações parciais. Arquivos arrastados têm concessão de uso único por janela/UID antes da confirmação; prévia aceita apenas raster local identificado por bytes. Notificações mantêm marcadores de deduplicação após dispensa. Nenhuma biblioteca, coleção Firebase ou schema Android foi adicionado. [Guia técnico/funcional e limites](PLATFORM-4.0.md).

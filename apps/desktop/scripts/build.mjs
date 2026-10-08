@@ -1,6 +1,7 @@
 import "./catalog.mjs";
 import { build } from "esbuild";
-import { mkdir, copyFile, readFile, writeFile } from "node:fs/promises";
+import { mkdir, copyFile, readFile, writeFile, rm } from "node:fs/promises";
+import { resolve, sep } from "node:path";
 await mkdir("resources", { recursive: true });
 await copyFile(
   "node_modules/sql.js/dist/sql-wasm.wasm",
@@ -8,6 +9,12 @@ await copyFile(
 );
 await mkdir("out/main", { recursive: true });
 await mkdir("out/ui", { recursive: true });
+const chunks = resolve("out/ui/chunks");
+if (!chunks.startsWith(resolve("out/ui") + sep))
+  throw Error("Diretório de build inválido.");
+await rm(chunks, { recursive: true, force: true });
+await rm("out/ui/main.js", { force: true });
+await rm("out/ui/main.css", { force: true });
 await build({
   entryPoints: ["electron/index.ts"],
   bundle: true,
@@ -26,12 +33,14 @@ await build({
   external: ["electron"],
 });
 await build({
-  entryPoints: ["src/main.tsx"],
+  entryPoints: { app: "src/main.tsx" },
   bundle: true,
   platform: "browser",
   target: "chrome144",
   format: "esm",
-  outfile: "out/ui/app.js",
+  outdir: "out/ui",
+  splitting: true,
+  chunkNames: "chunks/[name]-[hash]",
   minify: true,
   define: { "process.env.NODE_ENV": '"production"' },
   external: ["./fonts/*"],
@@ -59,7 +68,7 @@ for (const font of fonts)
     "../../core/designsystem/src/main/res/font/" + font,
     "out/ui/fonts/" + font,
   );
-await copyFile("../../docs/Manrope-OFL.txt","out/ui/fonts/OFL.txt");
+await copyFile("../../docs/Manrope-OFL.txt", "out/ui/fonts/OFL.txt");
 const packageInfo = JSON.parse(await readFile("package.json", "utf8"));
 await writeFile(
   "out/version.json",

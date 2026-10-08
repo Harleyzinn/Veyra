@@ -18,7 +18,13 @@ async function launch() {
     env: env as Record<string, string>,
     timeout: 30000,
   });
-  const page = await app.firstWindow();
+  await app.firstWindow();
+  let page = app.windows().find((p) => p.url().endsWith("#main"));
+  for (let n = 0; !page && n < 60; n++) {
+    await new Promise((r) => setTimeout(r, 100));
+    page = app.windows().find((p) => p.url().endsWith("#main"));
+  }
+  if (!page) throw Error("Janela principal indisponível");
   page.on("pageerror", (e) => errors.push(e.message));
   await page.waitForSelector(".sidebar", { timeout: 30000 });
   if (
@@ -36,6 +42,21 @@ async function launch() {
       })
       .click();
   return { app, page };
+}
+async function shutdown(app: any) {
+  const owner = app.windows().find((p: any) => p.url().endsWith("#main"));
+  if (owner)
+    await owner.evaluate(() => window.veyra.call("quit")).catch(() => {});
+  try {
+    await Promise.race([
+      app.close(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(Error("Shutdown timeout")), 10000),
+      ),
+    ]);
+  } catch {
+    app.process().kill();
+  }
 }
 async function run() {
   let { app, page } = await launch();
@@ -88,7 +109,7 @@ async function run() {
       });
     }, records);
     await page
-      .getByRole("button", { name: "Finanças", exact: true })
+      .getByRole("button", { name: "Centro financeiro", exact: true })
       .first()
       .click();
     await page
@@ -123,11 +144,12 @@ async function run() {
     const created = app.waitForEvent("window");
     await page.evaluate(() => window.veyra.call("openWindow", "mini"));
     const mini = await created;
-    await mini.waitForSelector(".mini-window");
+    await mini.waitForSelector(".veyra-glass-panel");
     await mini.close();
     const quickCreated = app.waitForEvent("window");
     await page.evaluate(() => window.veyra.call("openWindow", "quick"));
     const quick = await quickCreated;
+    await quick.getByRole("button", { name: "Tarefa", exact: true }).click();
     await quick
       .getByLabel("Título", { exact: true })
       .fill("Captura rápida validada");
@@ -143,14 +165,14 @@ async function run() {
     );
     assert.equal(captured.total, 1);
     await page
-      .getByRole("button", { name: "Central", exact: true })
+      .getByRole("button", { name: "Visão geral", exact: true })
       .first()
       .click();
     await page.screenshot({
       path: ".qa/dashboard-desktop.png",
       fullPage: true,
     });
-    await app.close();
+    await shutdown(app);
     ({ app, page } = await launch());
     const note = await page.evaluate(() =>
       window.veyra.call("item", "qa-note"),

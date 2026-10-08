@@ -1,27 +1,19 @@
+import { FocusAnalytics } from "./Workspaces";
 import { expanded, status } from "../shared/finance";
 import { habitStats } from "../shared/productivity";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Plus,
   Columns3,
   List,
   Check,
-  Star,
   Play,
   Pause,
   Square,
-  ArrowRight,
-  FileText,
   Folder,
-  Eye,
-  Code2,
-  History,
   Link2,
   ExternalLink,
-  Paperclip,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Item, Snapshot, today, addDays, createItem } from "../shared/model";
 import {
   api,
@@ -32,7 +24,6 @@ import {
   RecordRow,
   SearchBox,
   MonthControl,
-  Modal,
   dateLabel,
   labels,
 } from "./ui";
@@ -76,13 +67,15 @@ export function Tasks({
             ? !i.done && i.date === today()
             : filter === "Amanhã"
               ? !i.done && i.date === addDays(today(), 1)
-              : filter === "Atrasadas"
-                ? !i.done && !!i.date && i.date < today()
-                : filter === "Próximas"
-                  ? !i.done && i.date > today()
-                  : filter === "Inbox"
-                    ? !i.done && (!i.date || !i.parentId)
-                    : !i.done;
+              : filter === "Semana"
+                ? !i.done && i.date >= today() && i.date <= addDays(today(), 6)
+                : filter === "Atrasadas"
+                  ? !i.done && !!i.date && i.date < today()
+                  : filter === "Próximas"
+                    ? !i.done && i.date > today()
+                    : filter === "Inbox"
+                      ? !i.done && !i.date
+                      : !i.done;
     })
     .sort((a, b) =>
       sort === "title"
@@ -150,6 +143,7 @@ export function Tasks({
         {[
           "Hoje",
           "Amanhã",
+          "Semana",
           "Próximas",
           "Atrasadas",
           "Inbox",
@@ -340,311 +334,6 @@ export function Tasks({
             </Button>
           </div>
         </>
-      )}
-    </>
-  );
-}
-export function Notes({
-  data,
-  create,
-}: {
-  data: Snapshot;
-  create: (s: string) => void;
-}) {
-  const notes = data.items.filter((i) => i.type === "note");
-  const [selected, setSelected] = useState<string | null>(notes[0]?.id || null);
-  const [draft, setDraft] = useState<Item | null>(null);
-  const [query, setQuery] = useState("");
-  const [folder, setFolder] = useState("");
-  const [matching, setMatching] = useState<Set<string> | null>(null);
-  useEffect(() => {
-    let live = true;
-    if (!query) {
-      setMatching(null);
-      return;
-    }
-    void api("search", { query, types: ["note"], limit: 300 }).then((r) => {
-      if (live) setMatching(new Set(r.items.map((i: Item) => i.id)));
-    });
-    return () => {
-      live = false;
-    };
-  }, [query, data.items]);
-  const [preview, setPreview] = useState(false);
-  const [saved, setSaved] = useState("");
-  const [history, setHistory] = useState<any[] | null>(null);
-  const saveQueue = useRef(Promise.resolve());
-  const latest = useRef<Item | null>(null);
-  useEffect(() => {
-    if (!selected && notes.length) setSelected(notes[0].id);
-  }, [notes, selected]);
-  useEffect(() => {
-    let live = true;
-    void (async () => {
-      await saveQueue.current;
-      const item = selected ? await api("item", selected) : null;
-      if (live) {
-        setDraft(item);
-        latest.current = item;
-        setSaved("");
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [selected]);
-  function update(partial: Partial<Item>) {
-    const original = latest.current;
-    if (!original) return;
-    const next = { ...original, ...partial };
-    latest.current = next;
-    setDraft(next);
-    setSaved("Salvando…");
-    saveQueue.current = saveQueue.current
-      .then(() => api("save", { item: next, expectedUid: data.uid }))
-      .then(() => setSaved("Salvo neste PC"))
-      .catch((e) => setSaved(e.message));
-  }
-  const folders = [
-    ...new Set(notes.map((i) => i.fields.folder).filter(Boolean)),
-  ].sort();
-  return (
-    <>
-      <div className="page-title">
-        <div>
-          <div className="eyebrow">IDEIAS QUE GANHAM ESPAÇO</div>
-          <h1>Notas</h1>
-          <p>Escreva, conecte e volte quando precisar.</p>
-        </div>
-        <div className="actions">
-          <Button onClick={() => void api("openWindow", "notes")}>
-            <ExternalLink size={15} />
-            Outra janela
-          </Button>
-          <Button kind="primary" onClick={() => create("note")}>
-            <Plus size={16} />
-            Nova nota
-          </Button>
-        </div>
-      </div>
-      <div className="notes-workspace">
-        <aside className="folders">
-          <button
-            className={!folder ? "active" : ""}
-            onClick={() => setFolder("")}
-          >
-            <FileText size={16} />
-            Todas as notas<span>{notes.length}</span>
-          </button>
-          <button
-            className={folder === "@favorite" ? "active" : ""}
-            onClick={() => setFolder("@favorite")}
-          >
-            <Star size={16} />
-            Favoritas
-          </button>
-          <h4>PASTAS</h4>
-          {folders.map((f) => (
-            <button
-              className={folder === f ? "active" : ""}
-              key={f}
-              onClick={() => setFolder(f)}
-            >
-              <Folder size={15} />
-              {f}
-            </button>
-          ))}
-          <p className="muted small">
-            Escolha uma pasta no cabeçalho da nota. Tags e vínculos ficam com o
-            registro.
-          </p>
-        </aside>
-        <aside className="note-list">
-          <SearchBox
-            value={query}
-            onChange={setQuery}
-            placeholder="Buscar nas notas"
-          />
-          {notes
-            .filter(
-              (i) =>
-                (!folder || folder === "@favorite"
-                  ? !folder || i.favorite
-                  : i.fields.folder === folder) &&
-                (!matching || matching.has(i.id)),
-            )
-            .sort(
-              (a, b) =>
-                Number(b.favorite) - Number(a.favorite) ||
-                b.createdAt - a.createdAt,
-            )
-            .map((i) => (
-              <button
-                key={i.id}
-                className={
-                  "note-preview " + (selected === i.id ? "selected" : "")
-                }
-                onClick={() => setSelected(i.id)}
-              >
-                <strong>
-                  {i.title}
-                  {i.favorite && <Star size={12} />}
-                </strong>
-                <p>
-                  {i.notes.replace(/[#*_`]/g, "").slice(0, 95) ||
-                    "Uma ideia esperando palavras."}
-                </p>
-                <small>
-                  {dateLabel(i.date)}
-                  {i.fields.folder ? " · " + i.fields.folder : ""}
-                </small>
-              </button>
-            ))}
-        </aside>
-        <section className="note-editor">
-          {draft ? (
-            <>
-              <header>
-                <span className="muted small">
-                  {saved || "Autosave local ativo"}
-                </span>
-                <div className="actions">
-                  <Button onClick={() => setPreview(!preview)}>
-                    {preview ? <Code2 size={15} /> : <Eye size={15} />}{" "}
-                    {preview ? "Editar" : "Visualizar"}
-                  </Button>
-                  <Button onClick={() => update({ favorite: !draft.favorite })}>
-                    <Star
-                      size={15}
-                      fill={draft.favorite ? "currentColor" : "none"}
-                    />
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      void api("history", draft.id).then(setHistory)
-                    }
-                  >
-                    <History size={15} />
-                  </Button>
-                </div>
-              </header>
-              <input
-                className="note-title"
-                value={draft.title}
-                aria-label="Título da nota"
-                onChange={(e) => update({ title: e.target.value })}
-              />
-              <div className="note-metadata">
-                <input
-                  placeholder="Pasta"
-                  aria-label="Pasta da nota"
-                  value={draft.fields.folder || ""}
-                  onChange={(e) =>
-                    update({
-                      fields: { ...draft.fields, folder: e.target.value },
-                    })
-                  }
-                />
-                <input
-                  placeholder="Tags separadas por vírgula"
-                  aria-label="Tags da nota"
-                  value={draft.tags}
-                  onChange={(e) => update({ tags: e.target.value })}
-                />
-              </div>
-              {preview ? (
-                <article className="markdown">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a: ({ href, children }) => (
-                        <button
-                          className="markdown-link"
-                          onClick={() => href && void api("openLink", href)}
-                        >
-                          {children}
-                          <ArrowRight size={12} />
-                        </button>
-                      ),
-                      img: ({ alt }) => (
-                        <span className="muted">
-                          Imagem externa: {alt || "sem descrição"} •
-                          carregamento remoto desativado por privacidade
-                        </span>
-                      ),
-                    }}
-                  >
-                    {draft.notes}
-                  </ReactMarkdown>
-                </article>
-              ) : (
-                <textarea
-                  className="markdown-source"
-                  aria-label="Conteúdo da nota"
-                  value={draft.notes}
-                  placeholder={
-                    "# Sua próxima ideia\n\nMarkdown, listas, tabelas e blocos de código.\n\n- [ ] Um passo de cada vez"
-                  }
-                  onChange={(e) => update({ notes: e.target.value })}
-                />
-              )}
-              <footer>
-                <span>{draft.notes.length} caracteres</span>
-                <Button
-                  onClick={() =>
-                    void api("attach").then((a) => {
-                      if (a) update({ fields: { ...draft.fields, ...a } });
-                    })
-                  }
-                >
-                  <Paperclip size={14} />
-                  {draft.fields.attachmentName || "Anexar localmente"}
-                </Button>
-                {draft.fields.attachmentName && (
-                  <Button onClick={() => void api("attachment", draft.id)}>
-                    Exportar anexo
-                  </Button>
-                )}
-              </footer>
-            </>
-          ) : (
-            <Empty
-              title="Dê um lugar às suas ideias"
-              detail="Crie uma nota para começar. Ela fica disponível offline."
-              onAdd={() => create("note")}
-            />
-          )}
-        </section>
-      </div>
-      {history && (
-        <Modal title="Histórico da nota" onClose={() => setHistory(null)} wide>
-          <div className="form-body">
-            {history.length ? (
-              history.map((h) => (
-                <div className="history-entry" key={h.id}>
-                  <strong>
-                    {new Date(h.at).toLocaleString("pt-BR")} ·{" "}
-                    {h.action === "remote" ? "Outro dispositivo" : "Este PC"}
-                  </strong>
-                  <pre>
-                    {(h.after?.notes || h.after?.title || "").slice(0, 500)}
-                  </pre>
-                  <Button
-                    onClick={() => {
-                      if (draft)
-                        update({ notes: h.after.notes, title: h.after.title });
-                      setHistory(null);
-                    }}
-                  >
-                    Restaurar esta versão
-                  </Button>
-                </div>
-              ))
-            ) : (
-              <Empty title="O histórico começa na primeira edição" />
-            )}
-          </div>
-        </Modal>
       )}
     </>
   );
@@ -1057,9 +746,12 @@ export function Focus({ data }: { data: Snapshot }) {
   const [taskId, setTaskId] = useState("");
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setTick((v) => v + 1), 1000);
+    if (!data.focus.active || data.focus.paused) return;
+    const timer = setInterval(() => {
+      if (!document.hidden) setTick((v) => v + 1);
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [data.focus.active, data.focus.paused]);
   const focus = data.desktop.focus || {};
   const remaining = data.focus.active
     ? focus.paused
@@ -1084,6 +776,7 @@ export function Focus({ data }: { data: Snapshot }) {
           Overlay
         </Button>
       </div>
+      <FocusAnalytics data={data} />
       <div className="split two-thirds">
         <Panel className="focus-panel">
           <div className="eyebrow">

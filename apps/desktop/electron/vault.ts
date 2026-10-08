@@ -1,4 +1,6 @@
 import { status } from "../shared/finance";
+import { desktopPatch } from "../shared/settings";
+import { parseSearch, matchesSearch, sameContent } from "../shared/platform";
 import {
   createCipheriv,
   createDecipheriv,
@@ -119,6 +121,8 @@ export class SecureFiles {
 export const sha = (value: string) =>
   createHash("sha256").update(value, "utf8").digest("hex");
 export class Vault {
+  dataVersion = 0;
+  private cachedItems: Item[] | null = null;
   db: Database;
   private name: string;
   private constructor(
@@ -157,6 +161,7 @@ export class Vault {
   }
   transaction<T>(action: () => T): T {
     const previous = this.db.export();
+    const version = this.dataVersion;
     this.db.run("BEGIN");
     try {
       const result = action();
@@ -164,6 +169,8 @@ export class Vault {
       this.persist();
       return result;
     } catch (error) {
+      this.dataVersion = version;
+      this.cachedItems = null;
       this.db.close();
       this.db = new this.SQL.Database(previous);
       throw error;
@@ -177,11 +184,108 @@ export class Vault {
     return row ? JSON.parse(row.payload) : null;
   }
   items(includeDeleted = true): Item[] {
-    return this.query(
-      "SELECT payload FROM items " +
-        (includeDeleted ? "" : "WHERE deleted=0") +
+    if (!this.cachedItems)
+      this.cachedItems = this.query(
+        "SELECT payload FROM items ORDER BY date DESC,id",
+      ).map((r) => JSON.parse(r.payload));
+    return includeDeleted
+      ? this.cachedItems
+      : this.cachedItems.filter((i) => !i.deletedAt);
+  }
+  universalSearch(query: string, limit = 40, offset = 0) {
+    const syntax = parseSearch(
+      query,
+      this.preferences().financeCurrency || "BRL",
+    );
+    if (syntax.error) throw Error(syntax.error);
+    const words = syntax.text
+      .toLocaleLowerCase("pt-BR")
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 12);
+    const clauses = [
+        "deleted=0",
+        "type!='cloud_settings'",
+        ...words.map(() => "instr(search,?)>0"),
+      ],
+      args: any[] = [...words];
+    if (syntax.types.length) {
+      clauses.push(`type IN (${syntax.types.map(() => "?").join(",")})`);
+      args.push(...syntax.types);
+    }
+    if (syntax.date) {
+      clauses.push("date LIKE ?");
+      args.push(syntax.date + "%");
+    }
+    if (syntax.favorite !== undefined) {
+      clauses.push("json_extract(payload,'$.favorite')=?");
+      args.push(syntax.favorite ? 1 : 0);
+    }
+    const rows = this.query(
+      "SELECT payload FROM items WHERE " +
+        clauses.join(" AND ") +
         " ORDER BY date DESC,id",
-    ).map((r) => JSON.parse(r.payload));
+      args,
+    )
+      .map((r) => JSON.parse(r.payload) as Item)
+      .filter((i) => matchesSearch(i, { ...syntax, text: "" }));
+    const start = Math.max(0, Math.floor(Number(offset) || 0));
+    return {
+      total: rows.length,
+      items: rows
+        .slice(start, start + Math.max(1, Math.min(100, Number(limit) || 40)))
+        .map(withoutBinary),
+    };
+  }
+  checkBase(id: string, base: Item | undefined) {
+    if (!base) return;
+    const current = this.item(id);
+    if (current && !sameContent(current, base))
+      throw Error(
+        "Este registro mudou em outra janela ou dispositivo. Sua edição foi preservada como rascunho; reabra para comparar.",
+      );
+  }
+  drafts() {
+    return this.query("SELECT value FROM metadata WHERE key LIKE 'draft:%'")
+      .map((r) => JSON.parse(r.value))
+      .sort((a, b) => b.at - a.at);
+  }
+  writeDraft(item: Item) {
+    const draft = withoutBinary(item);
+    validateItem({ ...draft, title: draft.title.trim() || "Rascunho" });
+    if (Buffer.byteLength(JSON.stringify(draft)) > 300000)
+      throw Error("Rascunho excede o limite local.");
+    this.transaction(() => {
+      this.setRaw(
+        "draft:" + item.id,
+        JSON.stringify({ item: draft, at: Date.now() }),
+      );
+      this.db.run(
+        "DELETE FROM metadata WHERE key LIKE 'draft:%' AND key NOT IN (SELECT key FROM metadata WHERE key LIKE 'draft:%' ORDER BY CAST(json_extract(value,'$.at') AS INTEGER) DESC LIMIT 30)",
+      );
+    });
+  }
+  clearDraft(id: string) {
+    this.transaction(() =>
+      this.db.run("DELETE FROM metadata WHERE key=?", ["draft:" + id]),
+    );
+  }
+  activity() {
+    return this.query(
+      "SELECT payload FROM audit ORDER BY at DESC LIMIT 100",
+    ).map((r) => {
+      const e = JSON.parse(r.payload);
+      return {
+        id: e.id,
+        itemId: e.itemId,
+        at: e.at,
+        action: e.action,
+        title: e.after?.title || e.before?.title || "",
+        type: e.after?.type || e.before?.type || "",
+      };
+    });
   }
   search(
     query: string,
@@ -285,6 +389,8 @@ export class Vault {
     serverRevision: number,
     updated: string,
   ) {
+    this.dataVersion++;
+    this.cachedItems = null;
     const text = [
       i.title,
       i.notes,
@@ -336,6 +442,17 @@ export class Vault {
     validateItem(i);
     const row = this.row(i.id);
     const before = row ? JSON.parse(row.payload) : null;
+    if (before?.fields.attachment && !Object.hasOwn(i.fields, "attachment"))
+      i = {
+        ...i,
+        fields: {
+          ...i.fields,
+          attachment: before.fields.attachment,
+          attachmentName: before.fields.attachmentName,
+          attachmentHash: before.fields.attachmentHash || "",
+          hasAttachment: "yes",
+        },
+      };
     if (before && (before.type !== i.type || before.createdAt !== i.createdAt))
       throw Error("O tipo e a criação do registro não podem ser substituídos.");
     if (!force && before && JSON.stringify(before) === JSON.stringify(i))
@@ -343,6 +460,7 @@ export class Vault {
     const revision = (row?.localRevision || 0) + 1;
     this.store(i, revision, row?.serverRevision || 0, row?.serverUpdated || "");
     this.history(i.id, before, i, "local");
+    this.db.run("DELETE FROM metadata WHERE key=?", ["draft:" + i.id]);
     if (this.uid) {
       const pending = this.query(
         "SELECT baseRevision FROM pending WHERE id=?",
@@ -604,7 +722,11 @@ export class Vault {
       ) {
         for (const [key, setting] of Object.entries(value.desktop))
           if (appearance.has(key) && (!Object.hasOwn(desktop, key) || replace))
-            desktop[key] = setting;
+            try {
+              desktop[key] = desktopPatch({ [key]: setting })[key];
+            } catch {
+              /* Invalid appearance never changes the workspace. */
+            }
         this.setRaw("desktop", JSON.stringify(desktop));
       }
     });

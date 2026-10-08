@@ -1,5 +1,14 @@
 import { encodeBackup, decodeBackup } from "./backup";
 import { repeatedTask } from "../shared/productivity";
+import { desktopPatch } from "../shared/settings";
+import {
+  planAutomations,
+  taskBlocked,
+  validateTaskDependencies,
+} from "../shared/platform";
+import { platform, release } from "node:os";
+import { reportCSV, readCSV } from "../shared/reporting";
+import { clipboard } from "electron";
 import {
   app,
   BrowserWindow,
@@ -42,6 +51,7 @@ import {
   withoutBinary,
   today,
   parseMinor,
+  validDate,
 } from "../shared/model";
 import {
   finance,
@@ -75,7 +85,16 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
 ]);
-const version = "3.1.0";
+const version = "4.0.0";
+const bootAt = Date.now();
+let firstPaintMs = 0;
+let financeCache: {
+  vault: Vault;
+  key: string;
+  value: Snapshot["finance"];
+} | null = null;
+let snapshotCache: { vault: Vault; version: number; items: Item[] } | null =
+  null;
 let files: SecureFiles,
   vault: Vault,
   client: FirebaseClient,
@@ -85,9 +104,14 @@ let glass: VeyraGlassWindows | undefined;
 let quitting = false,
   tray: Tray | null = null;
 const windows = new Map<string, BrowserWindow>();
+const approvedDrops = new Map<
+  number,
+  { path: string; uid: string | null; at: number }
+>();
 let googleAttempt: ReturnType<typeof systemGoogle> | null = null;
 let weatherBusy = false;
 let importPending: any = null;
+let financeImportPending: any = null;
 const uiDir = join(__dirname, "../ui");
 const resources = () =>
   app.isPackaged ? process.resourcesPath : join(app.getAppPath(), "resources");
@@ -200,6 +224,10 @@ function openWindow(role = "main") {
     w.on("move", saveBounds);
   }
   void w.loadURL("veyra://app/index.html#" + role);
+  if (role === "main")
+    w.webContents.once("did-finish-load", () => {
+      firstPaintMs ||= Date.now() - bootAt;
+    });
   return w;
 }
 function setupTray() {
@@ -219,6 +247,11 @@ function setupTray() {
       { type: "separator" },
       { label: "Iniciar foco", click: () => command("focus") },
       { label: "Meu dia", click: () => command("day") },
+      { label: "Resumo do dia", click: () => openBrief("day") },
+      { label: "Captura universal", click: () => command("capture", "quick") },
+      { label: "Pesquisar Veyra", click: () => command("spotlight", "quick") },
+      { label: "Notificações", click: () => command("notifications") },
+      { label: "Configurações", click: () => command("settings") },
       { label: "Sincronizar", click: () => void engine.sync() },
       { type: "separator" },
       { label: "Mini Dashboard", click: () => openWindow("mini") },
@@ -264,6 +297,7 @@ const defaultShortcuts = {
   note: "CommandOrControl+Alt+N",
   focus: "CommandOrControl+Alt+F",
   recover: "CommandOrControl+Shift+R",
+  spotlight: "CommandOrControl+Alt+Space",
 };
 let registeredShortcuts: Record<string, string> = {};
 function applyDesktopTheme() {
@@ -297,9 +331,11 @@ function shortcuts(value: Record<string, string>) {
             ? glass?.all("recover")
             : name === "capture"
               ? command("capture", "quick")
-              : name === "focus"
-                ? command("focus", "widget-focus")
-                : command("new:" + name, "quick"),
+              : name === "spotlight"
+                ? command("spotlight", "quick")
+                : name === "focus"
+                  ? command("focus", "widget-focus")
+                  : command("new:" + name, "quick"),
         )
       )
         throw Error(`O atalho ${accelerator} já está em uso.`);
@@ -315,9 +351,11 @@ function shortcuts(value: Record<string, string>) {
           : command(
               name === "capture"
                 ? "capture"
-                : name === "focus"
-                  ? "focus"
-                  : "new:" + name,
+                : name === "spotlight"
+                  ? "spotlight"
+                  : name === "focus"
+                    ? "focus"
+                    : "new:" + name,
               name === "focus" ? "widget-focus" : "quick",
             ),
       );
@@ -325,12 +363,14 @@ function shortcuts(value: Record<string, string>) {
   }
 }
 async function switchVault(uid: string | null) {
+  approvedDrops.clear();
   engine?.stop();
   const previous = vault;
   vault = await Vault.open(files, uid, join(resources(), "sql-wasm.wasm"));
   engine = new SyncEngine(client, vault, changed);
   if (previous) setTimeout(() => previous.close(), 25000);
   importPending = null;
+  financeImportPending = null;
   for (const w of windows.values())
     if (!w.isDestroyed()) w.webContents.send("veyra:invalidate");
   if (uid) {
@@ -369,15 +409,30 @@ async function switchVault(uid: string | null) {
 }
 function snapshot(month?: string, days?: number): Snapshot {
   const all = vault.items();
+  const key = [
+    vault.dataVersion,
+    month || today().slice(0, 7),
+    days || 30,
+    today(),
+    vault.preferences().financeCurrency || "BRL",
+    vault.preferences().financialDay || 1,
+  ].join("|");
   let financial;
   try {
-    financial = finance(
-      all,
-      month || today().slice(0, 7),
-      vault.preferences().financeCurrency || "BRL",
-      days || 30,
-      Math.min(31, Math.max(1, Number(vault.preferences().financialDay || 1))),
-    );
+    financial =
+      financeCache?.vault === vault && financeCache.key === key
+        ? financeCache.value
+        : finance(
+            all,
+            month || today().slice(0, 7),
+            vault.preferences().financeCurrency || "BRL",
+            days || 30,
+            Math.min(
+              31,
+              Math.max(1, Number(vault.preferences().financialDay || 1)),
+            ),
+          );
+    financeCache = { vault, key, value: financial };
   } catch (e) {
     financial = finance([], month || today().slice(0, 7));
     financial.error = (e as Error).message;
@@ -393,6 +448,7 @@ function snapshot(month?: string, days?: number): Snapshot {
   const prefs = {
     ...desktop(),
     storageBytes: existsSync(cachePath) ? statSync(cachePath).size : 0,
+    dataVersion: vault.dataVersion,
     lastBackup: Number(vault.meta("lastBackup") || 0),
   };
   const focus = prefs.focus || {};
@@ -401,19 +457,28 @@ function snapshot(month?: string, days?: number): Snapshot {
       ? focus.remaining
       : Math.max(0, Math.ceil((focus.deadline - Date.now()) / 1000))
     : 0;
+  if (
+    snapshotCache?.vault !== vault ||
+    snapshotCache.version !== vault.dataVersion
+  )
+    snapshotCache = {
+      vault,
+      version: vault.dataVersion,
+      items: all
+        .filter((i) => !i.deletedAt && i.type !== "cloud_settings")
+        .map(withoutBinary),
+    };
   return {
     uid: vault.uid,
     user: client.user(),
-    items: all
-      .filter((i) => !i.deletedAt && i.type !== "cloud_settings")
-      .map(withoutBinary),
+    items: snapshotCache.items,
     preferences: vault.preferences(),
     desktop: prefs,
     sync: {
       status: engine.status,
       pending: vault.counts().pending,
       conflicts: vault.counts().conflicts,
-      lastSync: Number(vault.meta("lastSync") || 0),
+      lastSync: engine.lastSuccessful || Number(vault.meta("lastSync") || 0),
       error: engine.error,
     },
     finance: financial,
@@ -438,6 +503,14 @@ function save(items: Item[]) {
   const replaced = new Set(normalized.map((i) => i.id));
   const merged = [...all.filter((i) => !replaced.has(i.id)), ...normalized];
   for (const i of normalized) {
+    validateTaskDependencies(i, merged);
+    if (
+      i.type === "task" &&
+      i.done &&
+      !vault.item(i.id)?.done &&
+      taskBlocked(i, merged).length
+    )
+      throw Error("Conclua as tarefas das quais esta tarefa depende primeiro.");
     validateFinance(i, merged);
     const before = vault.item(i.id);
     if (
@@ -455,12 +528,74 @@ function save(items: Item[]) {
       );
   }
   vault.save(normalized);
+  for (const i of normalized)
+    if (i.type === "expense" && !all.some((old) => old.id === i.id))
+      runAutomations(i);
   changed();
   engine.schedule();
 }
 function notice(title: string, body: string) {
-  if (desktop().notifications && Notification.isSupported() && !qa)
+  if (
+    desktop().notifications &&
+    !desktop().doNotDisturb &&
+    !(desktop().quietFocus && desktop().focus?.active) &&
+    Notification.isSupported() &&
+    !qa
+  )
     new Notification({ title, body }).show();
+}
+function openBrief(kind: "morning" | "day" | "week") {
+  desktopSave({ briefKind: kind });
+  openWindow("brief");
+}
+function pushNotices(
+  entries: Array<{ id: string; title: string; itemId?: string }>,
+) {
+  const existing = JSON.parse(vault.meta("notifications") || "[]");
+  const marks: string[] = JSON.parse(vault.meta("notificationMarks") || "[]");
+  const seen = new Set([...marks, ...existing.map((p: any) => p.id)]);
+  const fresh = entries.filter((e) => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
+  if (!fresh.length) return;
+  vault.setMeta("notificationMarks", JSON.stringify([...seen].slice(-4000)));
+  vault.setMeta(
+    "notifications",
+    JSON.stringify(
+      [
+        ...fresh.map((e) => ({ ...e, at: Date.now(), read: false })),
+        ...existing,
+      ].slice(0, 200),
+    ),
+  );
+  notice(
+    "Veyra Life",
+    fresh.length === 1
+      ? fresh[0].title
+      : `${fresh.length} lembretes disponíveis na central.`,
+  );
+  changed();
+}
+function runAutomations(input?: Item) {
+  const marks: string[] = JSON.parse(vault.meta("automationMarks") || "[]");
+  const plan = planAutomations(
+    vault.items(false),
+    input,
+    today(),
+    new Set(marks),
+  );
+  if (!plan.marks.length) return;
+  const records = plan.records.filter((i) => !vault.item(i.id));
+  if (records.length) vault.save(records);
+  pushNotices(plan.alerts);
+  vault.setMeta(
+    "automationMarks",
+    JSON.stringify([...marks, ...plan.marks].slice(-2000)),
+  );
+  if (records.length) engine.schedule();
+  changed();
 }
 function startFocus(input: any) {
   const seconds =
@@ -553,6 +688,23 @@ async function refreshWeather() {
   }
 }
 const allowedMethods = new Set([
+  "exportReport",
+  "financeImportPreview",
+  "financeImportConfirm",
+  "universalSearch",
+  "draftWrite",
+  "drafts",
+  "draftDelete",
+  "activity",
+  "recent",
+  "notifications",
+  "notificationAction",
+  "diagnostics",
+  "diagnosticsCopy",
+  "organizeInbox",
+  "applyTemplate",
+  "dockPosition",
+  "attachmentPreview",
   "startup",
   "closeWindow",
   "panelInfo",
@@ -609,6 +761,265 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
       throw Error("A conta mudou. Abra novamente esta ação.");
   };
   switch (method) {
+    case "exportReport": {
+      const data = reportCSV(vault.items(false), value);
+      const target = await dialog.showSaveDialog(owner, {
+        title: "Exportar relatório selecionado",
+        defaultPath: "Veyra-Financeiro.csv",
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+      });
+      checkScope();
+      if (target.canceled || !target.filePath) return false;
+      writeFileSync(target.filePath, data, { encoding: "utf8", mode: 0o600 });
+      return true;
+    }
+    case "financeImportPreview": {
+      const source = await dialog.showOpenDialog(owner, {
+        properties: ["openFile"],
+        filters: [{ name: "CSV financeiro", extensions: ["csv"] }],
+      });
+      checkScope();
+      if (source.canceled) return null;
+      const path = source.filePaths[0];
+      if (statSync(path).size > 10000000) throw Error("Arquivo excede 10 MB.");
+      const rows = readCSV(readFileSync(path, "utf8")),
+        header = (rows.shift() || []).map((v) => v.trim().toLowerCase());
+      if (
+        !["type", "date", "title", "amount", "currency"].every((k) =>
+          header.includes(k),
+        )
+      )
+        throw Error("Use colunas type, date, title, amount e currency.");
+      if (rows.length > 2000)
+        throw Error("Importe até 2 mil lançamentos por arquivo.");
+      const all = vault.items(false);
+      const items = rows.map((row, n) => {
+        const record = Object.fromEntries(
+          header.map((key, i) => [key, (row[i] || "").trim()]),
+        );
+        if (
+          !["income", "expense"].includes(record.type) ||
+          !validDate(record.date) ||
+          !record.title
+        )
+          throw Error("Confira tipo, título e data na linha " + (n + 2));
+        const minor = parseMinor(record.amount, record.currency);
+        if (minor <= 0)
+          throw Error("Use valores positivos na linha " + (n + 2));
+        const fields: Record<string, string> = {
+          amount: record.amount,
+          amountMinor: String(minor),
+          currency: record.currency,
+          category: record.category || "",
+          status:
+            record.status || (record.type === "income" ? "received" : "paid"),
+        };
+        for (const type of ["account", "card"])
+          if (record[type]) {
+            const matches = all.filter(
+              (i) =>
+                i.type === type &&
+                (i.id === record[type] || i.title === record[type]),
+            );
+            if (matches.length !== 1)
+              throw Error(
+                "Conta ou cartão desconhecido/ambíguo na linha " + (n + 2),
+              );
+            fields[type] = matches[0].id;
+          }
+        return createItem(record.type, {
+          id: "csv:" + sha(JSON.stringify({ record, n })),
+          title: record.title,
+          date: record.date,
+          fields,
+        });
+      });
+      const token = crypto.randomUUID();
+      financeImportPending = { uid: vault.uid, items, token };
+      const newItems = items.filter((i) => !vault.item(i.id));
+      return {
+        total: items.length,
+        newCount: newItems.length,
+        duplicates: items.length - newItems.length,
+        items: newItems.slice(0, 15),
+        token,
+      };
+    }
+    case "financeImportConfirm": {
+      if (
+        !financeImportPending ||
+        financeImportPending.uid !== vault.uid ||
+        financeImportPending.token !== value?.token
+      )
+        throw Error("Abra a prévia novamente.");
+      const items = financeImportPending.items.filter(
+        (i: Item) => !vault.item(i.id),
+      );
+      save(items);
+      financeImportPending = null;
+      return true;
+    }
+    case "universalSearch":
+      return vault.universalSearch(
+        String(value?.query || "").slice(0, 500),
+        value?.limit,
+        value?.offset,
+      );
+    case "draftWrite":
+      vault.writeDraft(value.item);
+      return true;
+    case "drafts":
+      return vault.drafts();
+    case "draftDelete":
+      vault.clearDraft(String(value));
+      changed();
+      return true;
+    case "activity":
+      return vault.activity();
+    case "recent":
+      return JSON.parse(vault.meta("recent") || "[]")
+        .map((id: string) => vault.item(id))
+        .filter(Boolean)
+        .map(withoutBinary);
+    case "notifications":
+      return JSON.parse(vault.meta("notifications") || "[]");
+    case "notificationAction": {
+      if (!["read", "dismiss", "readAll"].includes(value?.action))
+        throw Error("Ação inválida.");
+      let rows = JSON.parse(vault.meta("notifications") || "[]");
+      rows = rows.flatMap((n: any) => {
+        if (value.action === "readAll") return [{ ...n, read: true }];
+        if (n.id !== value.id) return [n];
+        return value.action === "dismiss" ? [] : [{ ...n, read: true }];
+      });
+      vault.setMeta("notifications", JSON.stringify(rows));
+      changed();
+      return true;
+    }
+    case "diagnostics":
+    case "diagnosticsCopy": {
+      const metrics = app.getAppMetrics();
+      const report = {
+        version,
+        os: platform() + " " + release(),
+        electron: process.versions.electron,
+        chrome: process.versions.chrome,
+        startupMs: firstPaintMs,
+        uptimeSeconds: Math.round(process.uptime()),
+        database: "encrypted SQLite",
+        databaseHealthy:
+          vault.query("PRAGMA quick_check")[0]?.quick_check === "ok",
+        cacheBytes: snapshot().desktop.storageBytes,
+        records: vault.items(false).length,
+        localDrafts: vault.drafts().length,
+        auth: client.user() ? "connected" : "local",
+        firebaseConfigured: !!client.config,
+        sync: engine.status,
+        pending: vault.counts().pending,
+        conflicts: vault.counts().conflicts,
+        lastSync: engine.lastSuccessful || Number(vault.meta("lastSync") || 0),
+        networkRequests: { ...client.metrics },
+        processes: metrics.map((m) => ({
+          type: m.type,
+          cpuPercent: m.cpu.percentCPUUsage,
+          workingSetKB: m.memory.workingSetSize,
+        })),
+        panels: [...windows.keys()].filter(isPanelRole),
+        health: {
+          database: true,
+          cache: true,
+          auth: !!client.user(),
+          cloud: engine.status === "ready",
+        },
+      };
+      if (method === "diagnosticsCopy")
+        clipboard.writeText(JSON.stringify(report, null, 2));
+      return report;
+    }
+    case "dockPosition": {
+      if (!["left", "right"].includes(value)) throw Error("Lado inválido.");
+      desktopSave({ dockSide: value });
+      const w = openWindow("dock"),
+        b = w.getBounds(),
+        area = screen.getDisplayMatching(b).workArea;
+      w.setBounds({
+        ...b,
+        x: value === "left" ? area.x + 12 : area.x + area.width - b.width - 12,
+        y: area.y + 12,
+      });
+      return true;
+    }
+    case "organizeInbox": {
+      const original = vault.item(String(value?.id));
+      if (
+        !original ||
+        original.type !== "inbox" ||
+        original.done ||
+        original.deletedAt
+      )
+        throw Error("Captura não disponível.");
+      if (
+        !["task", "note", "expense", "event", "project"].includes(value?.type)
+      )
+        throw Error("Destino inválido.");
+      const fields: Record<string, string> =
+        value.type === "expense"
+          ? {
+              amount: String(value.amount || ""),
+              currency: vault.preferences().financeCurrency || "BRL",
+              status: "paid",
+            }
+          : {};
+      const converted = createItem(value.type, {
+        title: original.title,
+        notes: original.notes,
+        date: value.type === "note" ? "" : today(),
+        tags: original.tags,
+        parentId: original.parentId,
+        fields: { ...fields, capturedFrom: original.id },
+      });
+      save([
+        converted,
+        {
+          ...original,
+          done: true,
+          fields: { ...original.fields, organizedId: converted.id },
+        },
+      ]);
+      return withoutBinary(converted);
+    }
+    case "applyTemplate": {
+      const template = vault.item(String(value?.id));
+      if (!template || template.type !== "template" || template.deletedAt)
+        throw Error("Modelo não disponível.");
+      const type = template.fields.targetType || "task";
+      if (!["task", "note", "project"].includes(type))
+        throw Error("Tipo inválido.");
+      const root = createItem(type, {
+        title: String(value?.title || template.title)
+          .trim()
+          .slice(0, 200),
+        notes: template.notes,
+        date: today(),
+        fields: { templateId: template.id },
+      });
+      const children =
+        type === "project"
+          ? (template.fields.lines || "")
+              .split("\n")
+              .filter((v) => v.trim())
+              .slice(0, 50)
+              .map((v) =>
+                createItem("task", {
+                  title: v.trim().slice(0, 200),
+                  parentId: root.id,
+                  date: "",
+                }),
+              )
+          : [];
+      save([root, ...children]);
+      return withoutBinary(root);
+    }
     case "startup": {
       const enabled = value === true;
       app.setLoginItemSettings({
@@ -658,6 +1069,19 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
           "focus",
           "modules",
           "settings",
+          "inbox",
+          "projects",
+          "planner",
+          "review",
+          "automations",
+          "templates",
+          "notifications",
+          "sync",
+          "diagnostics",
+          "recent",
+          "favorites",
+          "backup",
+          "privacy",
         ].includes(value)
       )
         throw Error("Página inválida.");
@@ -684,13 +1108,27 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
             : undefined,
         },
       );
-    case "item":
-      return vault.item(String(value));
+    case "item": {
+      const item = vault.item(String(value));
+      if (item) {
+        const ids: string[] = JSON.parse(vault.meta("recent") || "[]");
+        if (ids[0] !== item.id)
+          vault.setMeta(
+            "recent",
+            JSON.stringify(
+              [item.id, ...ids.filter((id) => id !== item.id)].slice(0, 30),
+            ),
+          );
+      }
+      return item;
+    }
     case "save": {
       const items: Array<Item> = Array.isArray(value.items)
         ? value.items
         : [value.item];
       if (items.length > 200) throw Error("Muitos registros em uma operação.");
+      if (value.base && items.length === 1)
+        vault.checkBase(items[0].id, value.base);
       if (items.some((i) => i.fields.virtual === "yes"))
         items.forEach((i) => {
           if (i.fields.virtual === "yes")
@@ -726,7 +1164,10 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
         detail: i.title,
       });
       checkScope();
-      if (answer.response === 1) save([{ ...i, deletedAt: Date.now() }]);
+      if (answer.response === 1) {
+        save([{ ...i, deletedAt: Date.now() }]);
+        desktopSave({ lastUndo: { id: i.id, until: Date.now() + 15000 } });
+      }
       return answer.response === 1;
     }
     case "restore": {
@@ -793,12 +1234,31 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
         "lastPage",
         "reducedEffects",
       ]);
+      for (const key of [
+        "performanceMode",
+        "doNotDisturb",
+        "quietFocus",
+        "morningBrief",
+        "dailyReview",
+        "weeklyReview",
+        "smartHints",
+        "dockSide",
+        "animations",
+        "onboardingProfile",
+        "plannerDate",
+      ])
+        allowed.add(key);
       if (Object.keys(value).some((k) => !allowed.has(k)))
         throw Error("Configuração não autorizada.");
+      value = desktopPatch(value);
       desktopSave(value);
       if ("keepTray" in value) setupTray();
       if ("theme" in value) applyDesktopTheme();
       if ("reducedEffects" in value) glass?.reapply();
+      if ("performanceMode" in value) {
+        desktopSave({ reducedEffects: value.performanceMode === "economy" });
+        glass?.reapply();
+      }
       return true;
     }
     case "google": {
@@ -984,6 +1444,19 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
       return (await clipboard.readText()).slice(0, 100000);
     }
     case "attach": {
+      if (value?.path) {
+        const grant = approvedDrops.get(owner.webContents.id);
+        approvedDrops.delete(owner.webContents.id);
+        if (
+          !grant ||
+          grant.path !== value.path ||
+          grant.uid !== vault.uid ||
+          Date.now() - grant.at > 300000
+        )
+          throw Error(
+            "Escolha o arquivo pelo diálogo ou arraste-o novamente para o Veyra.",
+          );
+      }
       let path: string;
       if (value?.path) {
         path = String(value.path);
@@ -1014,6 +1487,27 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
         hasAttachment: "yes",
         attachmentLocalOnly: "yes",
       };
+    }
+    case "attachmentPreview": {
+      const item = vault.item(String(value));
+      if (!item || item.deletedAt || !item.fields.attachment) return null;
+      const bytes = Buffer.from(item.fields.attachment, "base64");
+      if (bytes.length > 10000000) return null;
+      const mime = bytes
+        .subarray(0, 8)
+        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        ? "image/png"
+        : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
+          ? "image/jpeg"
+          : /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString("ascii"))
+            ? "image/gif"
+            : bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
+                bytes.subarray(8, 12).toString("ascii") === "WEBP"
+              ? "image/webp"
+              : null;
+      return mime
+        ? "data:" + mime + ";base64," + bytes.toString("base64")
+        : null;
     }
     case "attachment": {
       const item = vault.item(value);
@@ -1230,6 +1724,21 @@ app
         throw Error((e as Error).message.slice(0, 500));
       }
     });
+    ipcMain.on("veyra:drop", (event, path, scopeUid) => {
+      if (
+        event.senderFrame !== event.sender.mainFrame ||
+        !event.senderFrame.url.startsWith("veyra://app/") ||
+        scopeUid !== vault.uid ||
+        typeof path !== "string" ||
+        path.length > 32768
+      )
+        return;
+      approvedDrops.set(event.sender.id, {
+        path,
+        uid: vault.uid,
+        at: Date.now(),
+      });
+    });
     setupTray();
     if (!qa)
       try {
@@ -1243,6 +1752,14 @@ app
       }
     openWindow();
     glass.all("restore");
+    if (
+      app.commandLine.hasSwitch("startup") &&
+      desktop().morningBrief &&
+      vault.meta("morningSeen") !== today()
+    ) {
+      vault.setMeta("morningSeen", today());
+      openBrief("morning");
+    }
     const displaysChanged = () => {
       glass?.all("recover");
     };
@@ -1257,28 +1774,81 @@ app
       void engine.sync();
       changed();
     });
+    powerMonitor.on("on-battery", () => {
+      glass?.reapply();
+      changed();
+    });
+    powerMonitor.on("on-ac", () => {
+      glass?.reapply();
+      changed();
+    });
     setInterval(() => {
       const focus = desktop().focus;
       if (focus?.active && !focus.paused && focus.deadline <= Date.now())
         finishFocus(true);
     }, 1000);
-    const notifications = new Set<string>();
     setInterval(() => {
-      if (!desktop().notifications) return;
+      runAutomations();
+      const hour = new Date().getHours(),
+        day = today();
+      if (
+        desktop().dailyReview &&
+        hour >= 21 &&
+        vault.meta("dayReviewSeen") !== day
+      ) {
+        vault.setMeta("dayReviewSeen", day);
+        openBrief("day");
+      }
+      if (
+        desktop().weeklyReview &&
+        new Date().getDay() === 0 &&
+        hour >= 18 &&
+        vault.meta("weekReviewSeen") !== day
+      ) {
+        vault.setMeta("weekReviewSeen", day);
+        openBrief("week");
+      }
+      const financial = snapshot().finance;
+      pushNotices(
+        financial.budgets.flatMap((b) =>
+          b.limit > 0
+            ? [80, 100, 120]
+                .filter((n) => (b.used / b.limit) * 100 >= n)
+                .map((n) => ({
+                  id: "budget:" + b.item.id + ":" + financial.month + ":" + n,
+                  title:
+                    "Orçamento " +
+                    b.item.title +
+                    ": " +
+                    n +
+                    "% do limite atingido",
+                  itemId: b.item.id,
+                }))
+            : [],
+        ),
+      );
+      const reminders: Array<{ id: string; title: string; itemId: string }> =
+        [];
       for (const i of vault.items(false)) {
-        if (i.done || !i.date) continue;
+        if (
+          i.done ||
+          !i.date ||
+          !["task", "event", "bill"].includes(i.type) ||
+          (!i.fields.reminder && i.type !== "event" && i.type !== "bill")
+        )
+          continue;
         const time = i.fields.reminder || i.fields.time || "09:00";
         const date = new Date(i.date + "T" + time + ":00").valueOf();
         const key = i.id + ":" + i.date + ":" + time;
         if (
           date <= Date.now() &&
-          Date.now() - date < 60000 &&
-          !notifications.has(key)
+          i.date === today() &&
+          /^([01]\d|2[0-3]):[0-5]\d$/.test(time)
         ) {
-          notifications.add(key);
-          notice("Lembrete do Veyra", i.title);
+          reminders.push({ id: key, title: i.title, itemId: i.id });
         }
       }
+      pushNotices(reminders);
     }, 15000);
     if (!qa)
       void updater

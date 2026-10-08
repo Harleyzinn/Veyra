@@ -1,3 +1,4 @@
+import FinanceExtras from "./FinanceExtras";
 import React, { useEffect, useState } from "react";
 import {
   ArrowDownLeft,
@@ -182,6 +183,9 @@ export function FinanceView({
           "Planejamento",
           "Simulador",
           "Conferência",
+          "Calendário financeiro",
+          "Assinaturas",
+          "Relatórios",
         ].map((t) => (
           <button
             key={t}
@@ -192,6 +196,15 @@ export function FinanceView({
           </button>
         ))}
       </div>
+      {["Calendário financeiro", "Assinaturas", "Relatórios"].includes(tab) && (
+        <FinanceExtras
+          tab={tab}
+          data={data}
+          month={month}
+          open={open}
+          create={create}
+        />
+      )}
       {tab === "Visão geral" && (
         <>
           <div className="metric-grid">

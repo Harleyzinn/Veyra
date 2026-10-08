@@ -66,6 +66,77 @@ async function setup(uid: string | null = "uid-a") {
     },
   };
 }
+test("partial UI saves keep local attachments and concurrent edits retain a recoverable encrypted draft", async () => {
+  const s = await setup();
+  try {
+    const note = createItem("note", {
+      title: "Original",
+      notes: "Original text",
+      fields: {
+        attachment: Buffer.from("fixture").toString("base64"),
+        attachmentName: "fixture.txt",
+        attachmentHash: "hash",
+      },
+    });
+    s.vault.save([note]);
+    const partial = {
+      ...note,
+      title: "From UI",
+      fields: { attachmentName: "fixture.txt", attachmentHash: "hash" },
+    };
+    s.vault.save([partial]);
+    assert.equal(
+      s.vault.item(note.id)?.fields.attachment,
+      note.fields.attachment,
+    );
+    const base = s.vault.item(note.id)!;
+    const draft = { ...base, notes: "My unsaved text" };
+    s.vault.writeDraft(draft);
+    s.vault.save([{ ...base, notes: "Other window edit" }]);
+    s.vault.writeDraft(draft);
+    assert.throws(() => s.vault.checkBase(note.id, base), /outra janela/);
+    assert.equal(s.vault.item(note.id)?.notes, "Other window edit");
+    assert.equal(s.vault.drafts()[0].item.notes, "My unsaved text");
+    const other = await Vault.open(s.files, "uid-b", wasm);
+    assert.equal(other.drafts().length, 0);
+    other.close();
+    const reopened = await Vault.open(s.files, "uid-a", wasm);
+    assert.equal(reopened.drafts()[0].item.notes, "My unsaved text");
+    reopened.close();
+  } finally {
+    s.cleanup();
+  }
+});
+test("universal SQL search applies combined filters without returning deleted or unrelated records", async () => {
+  const s = await setup();
+  try {
+    s.vault.save([
+      createItem("expense", {
+        title: "Café viagem",
+        date: "2026-10-08",
+        tags: "viagem",
+        fields: {
+          amountMinor: "4200",
+          category: "Alimentação",
+          currency: "BRL",
+        },
+      }),
+      createItem("expense", {
+        title: "Café removido",
+        date: "2026-10-08",
+        deletedAt: 1,
+        fields: { amountMinor: "5000", category: "Alimentação" },
+      }),
+    ]);
+    const result = s.vault.universalSearch(
+      "cafe type:expense tag:viagem amount:>40",
+    );
+    assert.equal(result.total, 1);
+    assert.equal(result.items[0].title, "Café viagem");
+  } finally {
+    s.cleanup();
+  }
+});
 test("encrypted cache does not contain private note text", async () => {
   const s = await setup();
   try {
