@@ -26,3 +26,6 @@ Certificado SHA-256: `8595f5acf3676e236dd32198a08e71bf5d04d875697d395f5bccd6b7a4
 ## Limites
 
 Esta rodada não certifica Play Protect ou Play Integrity, nem substitui teste em aparelho físico. Não houve alteração de regras Firebase, esquema de sincronização ou plano: segue Spark, com anexos locais. Login Google e integração com serviços externos não foram revalidados nesta versão. CSV/PDF são relatórios, não backups completos. Exporte um backup no app antes de instalar a atualização.
+## Publicação verificada
+
+Release [v2.3.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.3.0) publicada a partir do commit `89d35e6`. Consulta pública sem credenciais confirmou `v2.3.0` como release mais recente, estável e sem rascunho. O APK foi baixado pelo link público; seu SHA-256 corresponde ao arquivo local e ao digest do GitHub. A assinatura do APK baixado também foi verificada com o certificado original. Isso confirma o arquivo oferecido pela fonte usada pelo atualizador; a instalação continua sujeita à confirmação do Android.
