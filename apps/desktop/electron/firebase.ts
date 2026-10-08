@@ -188,12 +188,14 @@ export class FirebaseClient {
         response.status === 401
           ? "Sua sessão precisa ser renovada."
           : response.status === 403
-            ? "Acesso negado. Confira a conta e a verificação do e-mail."
+            ? "O Firebase recusou a sincronização. Suas alterações continuam salvas neste computador."
             : response.status >= 500
               ? "Servidor temporariamente indisponível."
               : result.error?.message || "Não foi possível concluir a conexão.",
-      ) as Error & { status: number };
+      ) as Error & { status: number; code?: string };
       e.status = response.status;
+      if (/^[A-Z_]+$/.test(result.error?.status || ""))
+        e.code = result.error.status;
       throw e;
     }
     return result;
@@ -376,12 +378,12 @@ export class FirebaseClient {
       this.root() +
       `/users/${uid}/${bucketFor(op.item.type)}/${sha(op.item.id)}`;
     const root = this.root() + "/users/" + uid;
-    const transaction = (await this.request(uid, ":beginTransaction", {}))
-      .transaction;
-    try {
+    // Firebase user tokens can read and atomically commit with preconditions,
+    // but the production BeginTransaction endpoint requires IAM permissions.
+    // Reread after a failed compare-and-swap so both versions are preserved.
+    for (let attempt = 0; attempt < 3; attempt++) {
       const documents = await this.request(uid, ":batchGet", {
         documents: [root, name],
-        transaction,
       });
       const current = documents.find((d: any) => d.found?.name === name)?.found;
       const profile = documents.find((d: any) => d.found?.name === root)?.found;
@@ -402,35 +404,52 @@ export class FirebaseClient {
         };
       }
       const revision = op.baseRevision + 1;
-      const result = await this.request(uid, ":commit", {
-        transaction,
-        writes: [
-          {
-            update: {
-              name,
-              fields: values(envelope(uid, op.item, revision, op.operationId)),
+      let result: any;
+      try {
+        result = await this.request(uid, ":commit", {
+          writes: [
+            {
+              update: {
+                name,
+                fields: values(
+                  envelope(uid, op.item, revision, op.operationId),
+                ),
+              },
+              currentDocument: current
+                ? { updateTime: current.updateTime }
+                : { exists: false },
+              updateTransforms: [
+                { fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" },
+              ],
             },
-            currentDocument: current
-              ? { updateTime: current.updateTime }
-              : { exists: false },
-            updateTransforms: [
-              { fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" },
-            ],
-          },
-          {
-            update: { name: root, fields: {} },
-            updateMask: { fieldPaths: [] },
-            updateTransforms: [
-              { fieldPath: "latestChangeAt", setToServerValue: "REQUEST_TIME" },
-              { fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" },
-            ],
-          },
-        ],
-      });
+            {
+              update: { name: root, fields: {} },
+              updateMask: { fieldPaths: [] },
+              updateTransforms: [
+                {
+                  fieldPath: "latestChangeAt",
+                  setToServerValue: "REQUEST_TIME",
+                },
+                { fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" },
+              ],
+            },
+          ],
+        });
+      } catch (error) {
+        const code = (error as { code?: string }).code;
+        if (
+          code === "FAILED_PRECONDITION" ||
+          code === "ABORTED" ||
+          code === "ALREADY_EXISTS"
+        )
+          continue;
+        throw error;
+      }
       return { revision, updatedAt: result.commitTime };
-    } finally {
-      await this.request(uid, ":rollback", { transaction }).catch(() => {});
     }
+    throw Error(
+      "Outro dispositivo está alterando este registro. Sua alteração foi preservada; tente sincronizar novamente.",
+    );
   }
   async pull(uid: string, vault: Vault, onChange: () => void) {
     let more = false;

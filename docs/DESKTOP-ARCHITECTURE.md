@@ -26,7 +26,7 @@ Desktop: SQLite/sql.js com tabelas de itens, outbox, conflitos, auditoria e meta
 
 Cloud: os caminhos continuam `users/{uid}/{collection}/{sha256(item.id)}`. As mesmas coleções Android recebem envelope com `ownerUid`, `revision`, `operationId`, `updatedAt` do servidor, valores financeiros tipados e hashes das referências. Anexos binários são removidos do envelope; permanecem locais. As [chamadas REST do Firestore usam o ID token Firebase e respeitam Security Rules](https://firebase.google.com/docs/firestore/use-rest-api).
 
-Cada save atualiza item, auditoria e operação pendente na mesma transação local. Edições sucessivas coalescem preservando a revisão base. Push usa transação CAS e envia contas/cartões antes dos dependentes; uma revisão divergente gera conflito. Um ACK de uma operação antiga não remove uma edição posterior. `operationId` torna a retomada idempotente. Os pulls são paginados por timestamp de servidor e ID, preservando nanossegundos e cursors por coleção. O marcador `latestChangeAt` do perfil é atualizado atomicamente com cada documento, conforme as regras existentes.
+Cada save atualiza item, auditoria e operação pendente na mesma transação local. Edições sucessivas coalescem preservando a revisão base. Push usa leitura autenticada e commit atômico CAS com precondição de existência/updateTime (sem BeginTransaction, que recusa tokens de usuário no Firebase real) e envia contas/cartões antes dos dependentes; uma revisão divergente gera conflito. Um ACK de uma operação antiga não remove uma edição posterior. `operationId` torna a retomada idempotente. Os pulls são paginados por timestamp de servidor e ID, preservando nanossegundos e cursors por coleção. O marcador `latestChangeAt` do perfil é atualizado atomicamente com cada documento, conforme as regras existentes.
 
 Desktop consulta o marcador a cada 30 segundos; Android observa um único documento de perfil e realiza pull incremental com debounce. Nenhum listener de todas as coleções foi adicionado. Backoff e lote limitado protegem a conectividade; o workspace continua útil sem rede.
 
@@ -43,3 +43,4 @@ Desktop e Android possuem canais separados. O atualizador desktop aceita apenas 
 ## Limites técnicos
 
 O cache criptografado de sql.js é exportado inteiro por transação; os testes desta versão validam recuperação e integridade, não garantem latência constante com dezenas de milhares de anexos. Busca e movimentos financeiros são paginados; listas de widgets são limitadas e o snapshot preserva texto completo para evitar truncar notas ao concluir/favoritar um registro. Escalabilidade maior pode exigir SQLite nativo criptografado e assinatura comercial Windows, sem alterar o protocolo remoto.
+

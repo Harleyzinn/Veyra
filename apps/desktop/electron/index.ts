@@ -18,7 +18,13 @@ import {
   nativeImage,
 } from "electron";
 import { join, resolve, basename, sep } from "node:path";
-import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  statSync,
+  mkdirSync,
+} from "node:fs";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import { SecureFiles, Vault, sha } from "./vault";
@@ -42,6 +48,15 @@ import {
   currency,
 } from "../shared/finance";
 const qa = !app.isPackaged && process.env.VEYRA_QA === "1";
+// Honor an explicit isolated profile for packaged validation and portable use.
+// This never changes Firebase configuration or renderer security.
+const profileDirectory = app.commandLine.getSwitchValue("user-data-dir");
+if (profileDirectory) {
+  const directory = resolve(profileDirectory);
+  mkdirSync(directory, { recursive: true });
+  app.setPath("userData", directory);
+  app.setPath("sessionData", directory);
+}
 if (qa) {
   const dir = process.env.VEYRA_QA_DATA;
   if (!dir || !resolve(dir).startsWith(resolve(app.getAppPath(), ".qa")))
@@ -56,7 +71,7 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
 ]);
-const version = "3.0.0";
+const version = "3.0.1";
 let files: SecureFiles,
   vault: Vault,
   client: FirebaseClient,

@@ -1,6 +1,6 @@
 # Veyra Life Desktop 3.0
 
-O Veyra agora tem um aplicativo Windows próprio, mantendo o Android nativo e o projeto Firebase existente. Instale o EXE da [release desktop](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v3.0.0) e o APK 2.2.0 da [release Android](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). O instalador oferece pasta de destino, menu Iniciar e atalho. Não exige ferramentas de desenvolvimento. Faça um backup antes de atualizar o celular.
+O Veyra agora tem um aplicativo Windows próprio, mantendo o Android nativo e o projeto Firebase existente. Instale o EXE da [release desktop](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v3.0.1) e o APK 2.2.0 da [release Android](https://github.com/Harleyzinn/Veyra/releases/tag/v2.2.0). O instalador oferece pasta de destino, menu Iniciar e atalho. Não exige ferramentas de desenvolvimento. Faça um backup antes de atualizar o celular.
 
 Na primeira execução, escolha **Continuar com Google** e use a mesma conta do celular. O login abre o navegador padrão do Windows; não informe sua senha em uma janela incorporada do Veyra. O espaço visitante é separado e continua disponível offline. Os registros de visitante não são enviados para uma conta automaticamente: use a exportação e a prévia de importação se quiser transferi-los.
 
@@ -76,4 +76,6 @@ Depois de validar, faça commit/push e execute `./scripts/publish-desktop-releas
 
 O login Google real depende da interação do titular da conta. Os testes automatizados cobrem Auth por e-mail em emulador, regras e sincronização entre clientes; não substituem uma validação manual com o celular e a conta Google reais.
 
-Veja os [resultados de validação desta versão](VALIDATION-DESKTOP-3.0.0.md).
+Veja os [resultados de validação desta versão](VALIDATION-DESKTOP-3.0.1.md).
+
+
