@@ -41,4 +41,6 @@ Captura de referência sintética: `screenshots/desktop-platform-home.png`. A do
 
 Login humano Google, confirmação física PC ↔ celular, Play Integrity/Play Protect, Windows 10, monitores físicos adicionais/remoção e suspensão real não foram certificados. O contrato Android e banco permanecem inalterados; dois clientes e Rules não substituem aparelho físico. Performance pode variar com máquina, disco, antivírus, GPU e volume de dados. Anexos continuam locais. Canal beta, plugins externos, IA externa, integração bancária e certificado Authenticode comercial não fazem parte desta release.
 
-Atualizador público: manifesto e instalador da release precisam ser baixados e verificados após a publicação; a confirmação é registrada abaixo quando concluída. A assinatura Ed25519 não implica aprovação SmartScreen/Play Protect. O APK atual permanece 2.2.0 e a release desktop usa `make_latest=false` para preservar seu canal.
+Atualizador público confirmado: cliente na versão 3.1.0 detectou a release 4.0.0, baixou o instalador público do GitHub e verificou Ed25519 com a chave fixada e SHA-256. A release latest do APK continua v2.2.0. A assinatura Ed25519 não implica aprovação SmartScreen/Play Protect. O APK atual permanece 2.2.0 e a release desktop usa `make_latest=false` para preservar seu canal.
+
+Instalador publicado e verificado: [Veyra Life Desktop 4.0.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.0.0). Commit de código da release: `76187bc`. SHA-256: `c50cbc076e99c0457c1a591f53054ccb593e978763c7d949bcb34cb0424c6d78`.
