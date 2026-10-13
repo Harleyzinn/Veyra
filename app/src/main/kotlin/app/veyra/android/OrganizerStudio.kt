@@ -71,17 +71,4 @@ import java.time.LocalDate
         }}}
     }
 }
-@Composable fun ModuleHub(vm:VeyraViewModel,select:(String)->Unit){
-    var query by remember{mutableStateOf("")};val hidden=vm.preferences["hidden"].orEmpty().split(',');val favorites=vm.preferences["favoriteModules"].orEmpty().split(',')
-    val groups=when(vm.preferences["profile"]){"Essencial"->setOf("Produtividade","Notas e diário","Rotina","Clima","Ferramentas");"Produtividade"->setOf("Produtividade","Notas e diário","Rotina","Sistema","Ferramentas","Clima");"Estudos"->setOf("Estudos","Produtividade","Notas e diário","Rotina","Clima","Ferramentas");"Finanças"->setOf("Finanças","Casa e veículo","Sistema","Clima","Ferramentas");else->Registry.specs.map{it.group}.toSet()}
-    LazyColumn(contentPadding=PaddingValues(start=22.dp,end=22.dp,top=10.dp,bottom=100.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
-        item{PageHeading("TUDO CONECTADO","Seu universo pessoal.","${Registry.specs.size} módulos para simplificar a vida.")}
-        item{OutlinedTextField(query,{query=it},label={Text("Encontrar um módulo")},leadingIcon={Icon(Icons.Default.Search,null)},modifier=Modifier.fillMaxWidth(),singleLine=true)}
-        item{Button(onClick={select("routine")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.DashboardCustomize,null);Spacer(Modifier.width(8.dp));Text("Abrir central de rotina")}}
-        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip(onClick={select("favorites")},label={Text("Favoritos")},leadingIcon={Icon(Icons.Default.Star,null,Modifier.size(16.dp))});AssistChip(onClick={select("timeline")},label={Text("Linha do tempo")},leadingIcon={Icon(Icons.Default.History,null,Modifier.size(16.dp))})}}
-        Registry.specs.filter{it.type !in hidden && it.group in groups && (query.isBlank() || it.label.contains(query,true) || it.group.contains(query,true))}.groupBy{it.group}.forEach{(group,specs)->
-            item{SectionTitle(group)}
-            specs.sortedBy{if(it.type in favorites)0 else 1}.chunked(2).forEach{row->item{Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){row.forEach{spec->Card(onClick={select(spec.type)},modifier=Modifier.weight(1f)){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Row(verticalAlignment=Alignment.CenterVertically){IconBadge(moduleIcon(spec.type),size=38);Spacer(Modifier.weight(1f));IconButton(onClick={vm.pref("favoriteModules",if(spec.type in favorites)favorites.filter{it!=spec.type}.joinToString(",")else (favorites+spec.type).joinToString(","))},modifier=Modifier.size(28.dp)){Icon(if(spec.type in favorites)Icons.Default.Star else Icons.Default.StarBorder,"Favoritar módulo",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)}};Text(spec.label,style=MaterialTheme.typography.titleSmall,minLines=2,maxLines=2,overflow=TextOverflow.Ellipsis)}}};if(row.size==1)Spacer(Modifier.weight(1f))}}}
-        }
-    }
-}
+@Composable fun ModuleHub(vm:VeyraViewModel,select:(String)->Unit)=NavigationHub(vm,select)

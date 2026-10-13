@@ -1,3 +1,4 @@
+import { financeNavigation } from "../shared/navigation";
 import FinanceExtras from "./FinanceExtras";
 import React, { useEffect, useState } from "react";
 import {
@@ -174,26 +175,23 @@ export function FinanceView({
           </Button>
         </div>
       </div>
-      <div className="tabs">
-        {[
-          "Visão geral",
-          "Movimentações",
-          "Contas e cartões",
-          "Recorrências",
-          "Planejamento",
-          "Simulador",
-          "Conferência",
-          "Calendário financeiro",
-          "Assinaturas",
-          "Relatórios",
-        ].map((t) => (
-          <button
-            key={t}
-            className={tab === t ? "active" : ""}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
+      <div className="finance-navigation" aria-label="Seções financeiras">
+        {Object.entries(financeNavigation).map(([group, tabs]) => (
+          <details key={group} open={tabs.includes(tab)}>
+            <summary>{group}</summary>
+            <div className="tabs">
+              {tabs.map((t) => (
+                <button
+                  key={t}
+                  aria-current={tab === t ? "page" : undefined}
+                  className={tab === t ? "active" : ""}
+                  onClick={() => setTab(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </details>
         ))}
       </div>
       {["Calendário financeiro", "Assinaturas", "Relatórios"].includes(tab) && (

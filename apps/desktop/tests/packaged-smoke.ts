@@ -1,7 +1,7 @@
 import { _electron as electron } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
-import { mkdirSync } from "node:fs";
+import { mkdirSync,readFileSync } from "node:fs";
 async function run() {
   const profile = resolve(".qa/packaged-" + Date.now());
   mkdirSync(profile, { recursive: true });
@@ -19,7 +19,7 @@ async function run() {
     const page = await app.firstWindow();
     await page.waitForSelector(".sidebar", { timeout: 30000 });
     const snapshot = await page.evaluate(() => window.veyra.call("snapshot"));
-    assert.equal(snapshot.version, "4.1.0");
+    assert.equal(snapshot.version, JSON.parse(readFileSync(resolve("package.json"),"utf8")).version);
     assert(snapshot.configured);
     assert(await app.evaluate(({ app }) => app.isPackaged));
     assert.equal(

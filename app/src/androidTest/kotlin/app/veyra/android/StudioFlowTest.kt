@@ -43,7 +43,7 @@ class StudioFlowTest {
         Assert.assertTrue(device.wait(Until.hasObject(By.textContains("4.800")),10000));screenshot("financas")
         click("Movimentações");Assert.assertTrue(reveal(By.text("Mercado da semana")));screenshot("movimentacoes")
         repeat(6){device.swipe(device.displayWidth/2,device.displayHeight/3,device.displayWidth/2,device.displayHeight*3/4,25);device.waitForIdle()}
-        click("Explorar: Movimentações");click("Orçamentos")
+        click("Área financeira: Dia a dia");click("Planejamento");click("Seção: Fluxo futuro");click("Orçamentos")
         Assert.assertTrue(reveal(By.text("Comer bem, gastar melhor")))
         Assert.assertTrue(reveal(By.textContains("286,50")))
         Assert.assertTrue(reveal(By.textContains("513,50")))

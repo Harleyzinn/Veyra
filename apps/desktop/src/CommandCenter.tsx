@@ -134,7 +134,7 @@ export function CommandPalette({
     commands = [
       ...modules.map((m) => ({
         title: "Abrir " + m.label,
-        keywords: m.id + " " + m.label,
+        keywords: m.id + " " + m.label + " " + m.group,
         run: () => go(m.id),
       })),
       ...quickTypes.map(([type, title]) => ({

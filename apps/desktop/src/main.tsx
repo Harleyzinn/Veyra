@@ -9,14 +9,10 @@ import React, {
 } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  LayoutDashboard,
   Wallet,
   CheckSquare,
   FileText,
   CalendarDays,
-  Flame,
-  Target,
-  Timer,
   Grid2X2,
   Settings2,
   Search,
@@ -73,7 +69,6 @@ import {
   paymentAgenda,
 } from "../shared/platform";
 import { reportRows } from "../shared/reporting";
-import { modules } from "../shared/commands";
 import { QuickComposer, CommandPalette } from "./CommandCenter";
 const FinanceView = lazy(() =>
   import("./FinanceView").then((m) => ({ default: m.FinanceView })),
@@ -112,20 +107,15 @@ import { isPanelRole } from "../shared/glass";
 import "./styles.css";
 import "./glass.css";
 import "./platform.css";
+import "./navigation.css";
+import { destinations, navigationPreferences } from "../shared/navigation";
+import {
+  SidebarNavigation,
+  NavigationPreferencesPanel,
+  ContextNavigation,
+} from "./Navigation";
 if (isPanelRole(location.hash.slice(1)))
   document.documentElement.dataset.floating = "true";
-const navigation = [
-  ["home", "Central", LayoutDashboard],
-  ["day", "Meu dia", Sun],
-  ["finance", "Finanças", Wallet],
-  ["tasks", "Tarefas", CheckSquare],
-  ["notes", "Notas", FileText],
-  ["calendar", "Calendário", CalendarDays],
-  ["habits", "Hábitos", Flame],
-  ["goals", "Metas e projetos", Target],
-  ["focus", "Foco", Timer],
-  ["modules", "Explorar", Grid2X2],
-] as const;
 const widgets = widgetCatalog;
 const defaultLayout = defaultDashboard;
 const syncLabels: Record<string, string> = {
@@ -197,6 +187,24 @@ function App() {
       unsubscribe();
     };
   }, [refresh]);
+  const initializedNavigation = useRef<string | null | undefined>(undefined);
+  const previousPage = useRef("");
+  useEffect(() => {
+    if (!data || !["main", "notes"].includes(role)) return;
+    if (initializedNavigation.current !== data.uid) {
+      initializedNavigation.current = data.uid;
+      previousPage.current = "";
+      setPage(
+        role === "notes"
+          ? "notes"
+          : navigationPreferences(data.desktop.navigation).home,
+      );
+      return;
+    }
+    if (previousPage.current === page) return;
+    previousPage.current = page;
+    void api("navigationVisit", page);
+  }, [page, data?.uid, data?.desktop.navigation]);
   const previousUid = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (!data) return;
@@ -210,7 +218,13 @@ function App() {
     previousUid.current = data.uid;
     if (role === "main" && !data.uid && !data.desktop.welcomeSeen)
       setOnboarding(true);
-    if (data && data.desktop.openDay && role === "main") setPage("day");
+    if (
+      data &&
+      !data.desktop.navigation &&
+      data.desktop.openDay &&
+      role === "main"
+    )
+      setPage("day");
   }, [data?.uid]);
   const create = (type: string) => {
     if (isPanelRole(role) && role !== "quick") void api("capture", { type });
@@ -496,7 +510,12 @@ function App() {
   }
   return (
     <div
-      className="app"
+      className={
+        "app" +
+        (navigationPreferences(data.desktop.navigation).compact
+          ? " nav-compact"
+          : "")
+      }
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
@@ -537,37 +556,13 @@ function App() {
           </div>
           <ChevronDown size={14} />
         </button>
-        <div className="nav-caption">SEU ESPAÇO</div>
-        <nav>
-          {modules.map(({ id, label: title, group }, n) => {
-            const Icon = navigation.find(([key]) => key === id)?.[2] || Grid2X2;
-            return (
-              <React.Fragment key={id}>
-                {n === 0 || modules[n - 1].group !== group ? (
-                  <div className="nav-group-label">{group}</div>
-                ) : null}
-                <button
-                  key={id}
-                  aria-label={title}
-                  className={page === id ? "active" : ""}
-                  onClick={() => setPage(id)}
-                >
-                  <Icon size={18} />
-                  {title}
-                  {id === "tasks" &&
-                    data.items.some((i) => i.type === "task" && !i.done) && (
-                      <span className="nav-count">
-                        {
-                          data.items.filter((i) => i.type === "task" && !i.done)
-                            .length
-                        }
-                      </span>
-                    )}
-                </button>
-              </React.Fragment>
-            );
-          })}
-        </nav>
+        <SidebarNavigation
+          page={page}
+          prefs={navigationPreferences(data.desktop.navigation)}
+          history={data.desktop.navigationHistory || { recent: [], counts: {} }}
+          go={navigate}
+          save={(p) => void api("desktop", { navigation: p })}
+        />
         <div className="sidebar-bottom">
           <button className="shortcut-card" onClick={() => setQuickAdd(true)}>
             <Plus size={18} />
@@ -594,9 +589,9 @@ function App() {
         <header className="topbar">
           <div className="breadcrumb">
             Meu espaço <span>/</span>{" "}
-            {page === "settings"
-              ? "Configurações"
-              : modules.find((m) => m.id === page)?.label || "Central"}
+            {destinations.find((d) => d.id === page)?.group || "Principal"}{" "}
+            <span>/</span>{" "}
+            {destinations.find((d) => d.id === page)?.label || "Explorar"}
           </div>
           <button className="global-search" onClick={() => setPalette(true)}>
             <Search size={16} />
@@ -632,6 +627,12 @@ function App() {
             <Plus size={20} />
           </IconButton>
         </header>
+        <ContextNavigation
+          page={page}
+          prefs={navigationPreferences(data.desktop.navigation)}
+          go={navigate}
+          save={(p) => void api("desktop", { navigation: p })}
+        />
         <main
           key={data.uid || "guest"}
           className={
@@ -659,6 +660,11 @@ function App() {
                   go={setPage}
                   cash={cash}
                   complete={complete}
+                />
+              ) : page === "navigation" ? (
+                <NavigationPreferencesPanel
+                  prefs={navigationPreferences(data.desktop.navigation)}
+                  save={(p) => void api("desktop", { navigation: p })}
                 />
               ) : page === "finance" ? (
                 <FinanceView
@@ -705,6 +711,7 @@ function App() {
                 />
               ) : ["settings", "backup", "privacy"].includes(page) ? (
                 <Settings
+                  go={navigate}
                   data={data}
                   initialTab={
                     page === "backup"
@@ -716,7 +723,13 @@ function App() {
                   onLogin={() => setOnboarding(true)}
                 />
               ) : (
-                <Modules data={data} open={open} create={create} />
+                <Modules
+                  key={page}
+                  initialType={page.startsWith("modules:") ? page.slice(8) : ""}
+                  data={data}
+                  open={open}
+                  create={create}
+                />
               )}
             </Suspense>
           </Boundary>
@@ -2211,15 +2224,17 @@ function Onboarding({ data, close }: { data: Snapshot; close: () => void }) {
   );
 }
 function Modules({
+  initialType = "",
   data,
   open,
   create,
 }: {
+  initialType?: string;
   data: Snapshot;
   open: (i: Item) => void;
   create: (s: string) => void;
 }) {
-  const [type, setType] = useState("");
+  const [type, setType] = useState(initialType);
   const [query, setQuery] = useState("");
   const [records, setRecords] = useState<{ total: number; items: Item[] }>({
     total: 0,

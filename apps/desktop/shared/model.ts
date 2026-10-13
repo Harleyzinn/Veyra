@@ -168,6 +168,11 @@ const routes: Record<string, string> = {
 };
 export const bucketFor = (type: string) => routes[type] ?? "workspace";
 export const syncPreferences = new Set([
+  "desktopNavigation",
+  "navOrder",
+  "navBottom",
+  "navHome",
+  "navCollapsed",
   "name",
   "theme",
   "profile",

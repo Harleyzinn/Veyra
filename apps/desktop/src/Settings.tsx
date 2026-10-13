@@ -32,7 +32,9 @@ export function Settings({
   data,
   onLogin,
   initialTab,
+  go,
 }: {
+  go?: (id: string) => void;
   data: Snapshot;
   onLogin: () => void;
   initialTab?: string;
@@ -86,6 +88,7 @@ export function Settings({
         </div>
         <span className="version-chip">Desktop {data.version}</span>
       </div>
+      <Button onClick={() => go?.("navigation")}>Personalizar menus</Button>
       <div className="settings-layout">
         <aside>
           {tabItems.map(([name, Icon]) => (

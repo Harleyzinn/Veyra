@@ -1,5 +1,6 @@
 import { validDate } from "./model";
 import { widgetCatalog } from "./platform";
+import { navigationPreferences, validRoute } from "./navigation";
 export const desktopKeys = new Set([
   "weatherEnabled",
   "welcomeSeen",
@@ -28,6 +29,8 @@ export const desktopKeys = new Set([
   "animations",
   "onboardingProfile",
   "plannerDate",
+  "navigation",
+  "navigationHistory",
 ]);
 const booleans = new Set([
   "weatherEnabled",
@@ -57,6 +60,37 @@ export function desktopPatch(input: any): Record<string, any> {
   const out: Record<string, any> = {};
   for (const [key, value] of Object.entries(input)) {
     if (!desktopKeys.has(key)) throw Error("Configuração não autorizada.");
+    if (key === "navigation") {
+      if (!value || typeof value !== "object" || Array.isArray(value))
+        throw Error("Navegação inválida.");
+      out[key] = navigationPreferences(value);
+      continue;
+    }
+    if (key === "navigationHistory") {
+      const v = value as any;
+      if (
+        !v ||
+        !Array.isArray(v.recent) ||
+        v.recent.length > 8 ||
+        !v.counts ||
+        typeof v.counts !== "object" ||
+        Array.isArray(v.counts) ||
+        v.recent.some(
+          (id: unknown) => typeof id !== "string" || !validRoute(id),
+        ) ||
+        Object.entries(v.counts).some(
+          ([id, n]) =>
+            !validRoute(id) ||
+            typeof n !== "number" ||
+            !Number.isInteger(n) ||
+            n < 0 ||
+            n > 100000,
+        )
+      )
+        throw Error("Histórico inválido.");
+      out[key] = { recent: [...new Set(v.recent)], counts: { ...v.counts } };
+      continue;
+    }
     if (booleans.has(key)) {
       if (typeof value !== "boolean") throw Error("Use uma opção válida.");
       out[key] = value;

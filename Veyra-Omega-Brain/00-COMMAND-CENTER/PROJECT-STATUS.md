@@ -4,15 +4,15 @@ title: "Project Status"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T09:24:08+00:00"
-sources: ["repo:app/build.gradle.kts", "repo:docs/VALIDATION-2.6.0.md", "repo:docs/AUDIT-2026-10-12.md"]
-expires_at: "2026-10-20T09:24:08+00:00"
+updated_at: "2026-10-13T15:59:12+00:00"
+sources: ["repo:app/build.gradle.kts", "repo:apps/desktop/package.json", "repo:docs/VALIDATION-NAVIGATION.md", "repo:docs/NAVIGATION.md"]
+expires_at: "2026-10-20T15:59:12+00:00"
 ---
 
 # Estado em revisão local
 
-Android 2.6.0: APK assinado local e testes aprovados. Última release pública registrada: 2.4.0; esta sessão não consultou nem publicou no GitHub. Windows 4.1.0 sem alteração. Omega permanece fundação local SQLite/FTS5, sem embeddings, GitHub incremental ou executor de agentes.
+Android 2.7.0 (270) e Windows 4.2.0: navegação reorganizada, artefatos locais testados. Últimas versões públicas registradas na memória: Android 2.4.0 e Windows 4.1.0; GitHub não consultado nem publicação executada nesta rodada.
 
-Filtros de tarefas Amanhã/Próximos 7 dias, notas favoritas/fixadas e arquivar/restaurar preservando registros completos. 153 testes JVM e três testes de interface aprovados; lint sem erros. [[ORGANIZER-2.6-2026-10-13]] · [[CURRENT-PRIORITIES]].
+157 testes de núcleo Android, 57 Windows, 22 testes de interface Android e 106 destinos Windows renderizados com sucesso. APK assinado original e executável Windows empacotado conferidos. Ver docs/VALIDATION-NAVIGATION.md e [[NAVIGATION-RESTRUCTURE-2026-10-13]].
 
-Obsidian instalado, cadastro do Vault pendente conforme conferência histórica de 12/10; não revalidado hoje. iOS sem implementação neste repositório. Conferir código e Git antes de agir; descoberta inicial é histórica.
+Preferências de menus integradas à fila existente por plataforma; novo transporte remoto entre aparelhos ainda não validado. Firebase remoto, iOS e modelo financeiro não alterados. Omega segue local/textual; embeddings, GitHub incremental e executores pendentes. Cadastro do Vault no Obsidian não reconferido nesta sessão.

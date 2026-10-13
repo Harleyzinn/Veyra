@@ -1,5 +1,6 @@
 import { encodeBackup, decodeBackup } from "./backup";
 import { repeatedTask } from "../shared/productivity";
+import { validRoute, visit } from "../shared/navigation";
 import { desktopPatch } from "../shared/settings";
 import {
   planAutomations,
@@ -85,7 +86,7 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true },
   },
 ]);
-const version = "4.1.0";
+const version = app.getVersion();
 const bootAt = Date.now();
 let firstPaintMs = 0;
 let financeCache: {
@@ -115,7 +116,20 @@ let financeImportPending: any = null;
 const uiDir = join(__dirname, "../ui");
 const resources = () =>
   app.isPackaged ? process.resourcesPath : join(app.getAppPath(), "resources");
-const desktop = () => JSON.parse(vault.meta("desktop") || "{}");
+const desktop = () => {
+  const local = JSON.parse(vault.meta("desktop") || "{}");
+  const shared = vault.preferences().desktopNavigation;
+  if (shared) {
+    try {
+      local.navigation = desktopPatch({
+        navigation: JSON.parse(shared),
+      }).navigation;
+    } catch {
+      /* Preserve usable local preferences on malformed remote data. */
+    }
+  }
+  return local;
+};
 function desktopSave(data: Record<string, any>) {
   vault.setMeta("desktop", JSON.stringify({ ...desktop(), ...data }));
   changed();
@@ -714,6 +728,7 @@ const allowedMethods = new Set([
   "panelsAll",
   "capture",
   "navigate",
+  "navigationVisit",
   "snapshot",
   "search",
   "item",
@@ -1079,35 +1094,15 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
       }
       return true;
     }
+    case "navigationVisit": {
+      if (typeof value !== "string" || !validRoute(value))
+        throw Error("Página inválida.");
+      const history = desktop().navigationHistory || { recent: [], counts: {} };
+      desktopSave({ navigationHistory: visit(history, value) });
+      return true;
+    }
     case "navigate": {
-      if (
-        ![
-          "home",
-          "day",
-          "finance",
-          "tasks",
-          "notes",
-          "calendar",
-          "habits",
-          "goals",
-          "focus",
-          "modules",
-          "settings",
-          "inbox",
-          "projects",
-          "planner",
-          "review",
-          "automations",
-          "templates",
-          "notifications",
-          "sync",
-          "diagnostics",
-          "recent",
-          "favorites",
-          "backup",
-          "privacy",
-        ].includes(value)
-      )
+      if (typeof value !== "string" || !validRoute(value))
         throw Error("Página inválida.");
       command(value);
       return true;
@@ -1257,6 +1252,8 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
         "kanbanColumns",
         "lastPage",
         "reducedEffects",
+        "navigation",
+        "navigationHistory",
       ]);
       for (const key of [
         "performanceMode",
@@ -1276,6 +1273,11 @@ async function dispatch(method: string, value: any, owner: BrowserWindow) {
         throw Error("Configuração não autorizada.");
       value = desktopPatch(value);
       desktopSave(value);
+      if (value.navigation) {
+        vault.preference("desktopNavigation", JSON.stringify(value.navigation));
+        engine.schedule();
+        changed();
+      }
       if ("keepTray" in value) setupTray();
       if ("theme" in value) applyDesktopTheme();
       if ("reducedEffects" in value) glass?.reapply();

@@ -4,13 +4,13 @@ title: "Current Priorities"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T09:24:08+00:00"
-sources: ["user:melhore-mais:2026-10-13", "repo:docs/VALIDATION-2.6.0.md", "repo:docs/AUDIT-2026-10-12.md"]
-expires_at: "2026-10-20T09:24:08+00:00"
+updated_at: "2026-10-13T15:59:12+00:00"
+sources: ["user:navigation-restructure:2026-10-13", "repo:docs/NAVIGATION-AUDIT.md", "repo:docs/VALIDATION-NAVIGATION.md"]
+expires_at: "2026-10-20T15:59:12+00:00"
 ---
 
 # Continuidade
 
-Concluído: Android 2.6 com tarefas amanhã/sete dias, filtros de notas favoritas/fixadas e arquivar/restaurar sem perda de conteúdo. APK local validado; publicação não executada. Captura rápida, limpeza após sucesso e fixação da 2.5 preservadas.
+Concluído: auditoria e mapas, registro declarativo de destinos, sidebar Windows com grupos/compacto/favoritos/recência/contexto, barra Android personalizável/rail, catálogo pesquisável completo, financeiro por famílias e configurações Android por áreas. Dados e rotas anteriores preservados. Artefatos locais: Android 2.7 e Windows 4.2.
 
-Próximas prioridades propostas: validar em celular real; ativar o Vault na interface Obsidian; implementar fase 2 de consolidação com proveniência; medir consumo Desktop; planejar iOS. Publicação e operações sensíveis dependem de autorização humana apropriada. Consulte [[ORGANIZER-2.6-2026-10-13]] e a auditoria de pendências antes de ampliar o escopo.
+Próximo: validar sincronização dos novos menus entre dois dispositivos autenticados e uso em celular físico; revisar preservação dos filtros por módulo; etapas posteriores Omega e planejamento iOS. Publicar somente com autorização apropriada. Consultar [[NAVIGATION-RESTRUCTURE-2026-10-13]] e [[NAVIGATION-VALIDATION-LESSONS]] antes de repetir testes de navegação.

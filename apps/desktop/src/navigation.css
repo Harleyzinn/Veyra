@@ -1,0 +1,214 @@
+.sidebar {
+  width: 256px;
+  transition: width 0.18s ease;
+  background: var(--side);
+}
+.context-navigation {
+  display: flex;
+  gap: 8px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.context-navigation button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-height: 36px;
+}
+.context-navigation button:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.sidebar .nav-mode {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  min-height: 44px;
+  color: var(--muted);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.sidebar nav button {
+  min-height: 44px;
+  position: relative;
+}
+.sidebar nav button[aria-current="page"] {
+  box-shadow: inset 3px 0 var(--accent);
+}
+.sidebar nav .nav-group-toggle {
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+}
+.nav-group-toggle svg {
+  transition: transform 0.18s;
+}
+.nav-group-toggle svg.expanded {
+  transform: rotate(180deg);
+}
+.nav-children {
+  animation: nav-in 0.16s ease;
+}
+.nav-children[hidden] {
+  display: none;
+}
+.nav-usage summary {
+  padding: 12px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.nav-usage .nav-group-label {
+  padding-top: 4px;
+}
+.navigation-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.navigation-row > span {
+  flex: 1;
+  min-width: 0;
+}
+.navigation-row small {
+  display: block;
+  color: var(--muted);
+}
+.navigation-row button {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 9px;
+}
+.navigation-row button:hover {
+  background: var(--surface);
+}
+.navigation-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.finance-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+.finance-navigation details {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.finance-navigation summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.finance-navigation .tabs {
+  margin: 8px 0 0;
+  flex-wrap: wrap;
+}
+.nav-compact .sidebar {
+  width: 76px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.nav-compact .sidebar .nav-text,
+.nav-compact .sidebar .brand > div:not(.brand-mark),
+.nav-compact .sidebar .workspace-switch,
+.nav-compact .sidebar .sidebar-bottom {
+  display: none;
+}
+.nav-compact .sidebar .brand {
+  padding: 0 6px 20px;
+}
+.nav-compact .sidebar nav button,
+.nav-compact .sidebar .nav-mode {
+  justify-content: center;
+  padding: 10px;
+}
+.nav-compact .nav-group-label {
+  font-size: 0;
+  padding: 6px;
+}
+.nav-compact .nav-group-toggle {
+  min-height: 20px;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@keyframes nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 1000px) {
+  .sidebar {
+    width: 76px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .sidebar .nav-text,
+  .sidebar .brand > div:not(.brand-mark),
+  .sidebar .workspace-switch,
+  .sidebar .sidebar-bottom,
+  .sidebar .nav-usage {
+    display: none;
+  }
+  .sidebar .brand {
+    padding: 0 6px 20px;
+  }
+  .sidebar nav button,
+  .sidebar .nav-mode {
+    justify-content: center;
+    padding: 10px;
+  }
+  .sidebar .nav-group-label {
+    font-size: 0;
+    padding: 6px;
+  }
+  .breadcrumb {
+    font-size: 0.75rem;
+  }
+  .global-search span {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .nav-group-toggle svg {
+    transition: none;
+  }
+  .nav-children {
+    animation: none;
+  }
+}
+
+.nav-compact .nav-children > .nav-usage {
+  display: block;
+}
+.nav-compact .nav-children > .nav-usage summary {
+  font-size: 0;
+  padding: 8px;
+}

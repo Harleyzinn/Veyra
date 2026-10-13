@@ -22,7 +22,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 internal data class FinanceDashboardData(val summary:FinancialSummary,val projection:CashProjection,val transactions:List<Item>,val obligations:List<Item>,val health:FinancialHealth,val alerts:List<FinancialAlert>,val insights:List<FinancialInsight>)
-private val financeSections=listOf("Resumo","Movimentações","A pagar","A receber","Fluxo futuro","Simulador","Conferência","Calendário","Contas","Cartões","Recorrências","Orçamentos","Metas","Assinaturas","Dívidas","Patrimônio","Relatórios","Alertas","Modelos e regras","Configurações","Lixeira")
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun FinanceScreen(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
@@ -61,7 +61,7 @@ private val financeSections=listOf("Resumo","Movimentações","A pagar","A receb
             item{PageHeading("SUA CENTRAL FINANCEIRA","Dinheiro com clareza.","Registre rápido. Planeje com controle.")}
             item{Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick={month=month.minusMonths(1)}){Icon(Icons.Default.ChevronLeft,"Mês anterior")};Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy",Brazilian)).replaceFirstChar{it.titlecase(Brazilian)},Modifier.weight(1f),style=MaterialTheme.typography.titleMedium);IconButton(onClick={month=month.plusMonths(1)}){Icon(Icons.Default.ChevronRight,"Próximo mês")};IconButton(onClick={vm.pref("financeHidden",if(hidden)"Não"else"Sim")}){Icon(if(hidden)Icons.Default.VisibilityOff else Icons.Default.Visibility,if(hidden)"Mostrar valores"else"Ocultar valores")}}}
             item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){Button(onClick={launchNew("income")},modifier=Modifier.weight(1f).height(52.dp)){Text("+ Entrada")};FilledTonalButton(onClick={launchNew("expense")},modifier=Modifier.weight(1f).height(52.dp)){Text("− Gasto")}}}
-            item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("Resumo","Movimentações","A pagar","A receber").forEach{FilterChip(section==it,{section=it},label={Text(it)})}};Choice("Explorar",financeSections,section,{section=it})}
+            item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("Resumo","Movimentações","A pagar","A receber").forEach{FilterChip(section==it,{section=it},label={Text(it)})}};val group=app.veyra.model.NavigationPolicy.financeSections.entries.first{section in it.value}.key;Choice("Área financeira",app.veyra.model.NavigationPolicy.financeSections.keys.toList(),group,{section=app.veyra.model.NavigationPolicy.financeSections.getValue(it).first()});Choice("Seção",app.veyra.model.NavigationPolicy.financeSections.getValue(group),section,{section=it})}
             if(vm.busy)item{LinearProgressIndicator(Modifier.fillMaxWidth())}
             if(dashboard==null)item{StudioCard{Text("Carregando seus registros…");LinearProgressIndicator(Modifier.fillMaxWidth())}}
             dashboard?.exceptionOrNull()?.let{failure->item{EmptyCard("Não foi possível calcular",failure.message ?: "Confira os valores registrados e tente novamente.")}}

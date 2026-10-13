@@ -18,13 +18,14 @@ Home acionável, galeria de widgets, captura local revisável, Inbox, Spotlight,
 
 ## APK e instalação
 
-Em revisão local: Android 2.6.0, tarefas para amanhã e próximos sete dias, filtros de
-notas favoritas/fixadas e arquivar/restaurar pela lista. Inclui as melhorias da 2.5.
-[Mudanças](docs/RELEASE-2.6.0.md) · [Testes e limites](docs/VALIDATION-2.6.0.md) ·
+Em revisão local: Android 2.7.0 e Windows 4.2.0, navegação por áreas, favoritos de
+páginas, recentes, personalização de menus e financeiro organizado por famílias.
+Inclui as melhorias da 2.6. [Mudanças](docs/RELEASE-2.7.0.md) ·
+[Navegação e arquitetura](docs/NAVIGATION.md) · [Testes e limites](docs/VALIDATION-NAVIGATION.md) ·
 [Revisão de pendências](docs/AUDIT-2026-10-12.md).
 O download público abaixo permanece na última versão publicada.
 
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O novo APK assinado local fica em `dist/Veyra-2.6.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
+Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O novo APK assinado local fica em `dist/Veyra-2.7.0.apk`; o instalador Windows em `apps/desktop/release/VeyraLife-Setup-4.2.0.exe`. O APK requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
 
 ## Novidades da versão 2.4
 

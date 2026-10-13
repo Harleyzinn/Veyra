@@ -152,6 +152,16 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
     fun saveMonthClose(month:java.time.YearMonth,currency:String)=operation{val day=(store.preferences()["financialDay"]?.toIntOrNull() ?: 1).coerceIn(1,31);val period=FinanceEngine.period(month,day);val context=store.financeWindow(minOf(period.start.minusMonths(3),LocalDate.now().minusMonths(3)),maxOf(period.end,LocalDate.now()));store.saveAll(FinanceActions.closeMonth(context,month,LocalDate.now(),currency,day));message="Fechamento guardado"}
     override fun onCleared(){cloud.close();store.close();super.onCleared()}
     fun pref(key:String,value:String)=operation{store.preference(key,value)}
+    fun navigationVisit(id:String)=operation{
+        if(id in AppNavigation.ids){
+            val prefs=store.preferences()
+            store.preference("navRecent",NavigationPolicy.visit(prefs["navRecent"].orEmpty(),id,AppNavigation.ids))
+            val counts=prefs["navUsage"].orEmpty().split(',').mapNotNull{v->val p=v.split(':');if(p.size==2&&p[0] in AppNavigation.ids)p[0] to (p[1].toIntOrNull()?:0)else null}.toMap().toMutableMap()
+            counts[id]=((counts[id]?:0)+1).coerceAtMost(100000)
+            store.preference("navUsage",counts.entries.joinToString(","){"${it.key}:${it.value}"})
+        }
+    }
+    fun navigationDefaults()=operation{mapOf("navOrder" to "","navBottom" to "","navHome" to "today","navCollapsed" to "","hidden" to "","favoriteModules" to "").forEach{(key,value)->store.preference(key,value)}}
     fun autosave(item:Item)=operation{Workspace.validate(item,Registry.spec(item.type));store.save(item)}
     fun save(item:Item,onDone:()->Unit={})=operation(onDone=onDone){
         Workspace.validate(item,Registry.spec(item.type))

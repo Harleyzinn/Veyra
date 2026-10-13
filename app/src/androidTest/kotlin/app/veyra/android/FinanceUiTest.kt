@@ -22,7 +22,7 @@ class FinanceUiTest {
     private var prepared=false
     private var originalPreferences=emptyMap<String,String>()
     private val changedPreferences=mapOf("name" to "Teste", "lock" to "", "financeLock" to "Não", "home" to "tasks,balance,weather,habits,focus,favorites",
-        "financeHidden" to "Não", "financeCurrency" to "BRL", "financialDay" to "1", "recentFinanceAccount" to "", "recentExpenseCategory" to "Alimentação", "recentIncomeCategory" to "Salário", "financeNotifications" to "Não", "financialMigrationVersion" to "3")
+        "financeHidden" to "Não", "financeCurrency" to "BRL", "financialDay" to "1", "recentFinanceAccount" to "", "recentExpenseCategory" to "Alimentação", "recentIncomeCategory" to "Salário", "financeNotifications" to "Não", "financialMigrationVersion" to "3", "navHome" to "today", "navBottom" to "", "navCollapsed" to "", "navRecent" to "", "navUsage" to "")
 
     @Before fun isolateLocalFinance(){
         Assume.assumeTrue("UI regression tests use the guest workspace only",WorkspaceIdentity.activeUid(context)==null)
@@ -66,6 +66,11 @@ class FinanceUiTest {
     private fun text(selector:BySelector,timeout:Long=15_000):UiObject2=
         device.wait(Until.findObject(selector),timeout) ?: throw AssertionError("Element not found: $selector")
     private fun hideKeyboard(){if(device.hasObject(By.pkg(Pattern.compile(".*inputmethod.*"))))device.pressBack();SystemClock.sleep(250)}
+    private fun exportWithoutNavigationUsage(store:WorkspaceStore):String {
+        val snapshot=org.json.JSONObject(store.exportJson())
+        snapshot.getJSONObject("preferences").apply{remove("navRecent");remove("navUsage")}
+        return snapshot.toString()
+    }
     private fun scrollTo(selector:BySelector):UiObject2 {
         // A short, slow drag avoids flinging past rows inside tall report cards.
         for(down in listOf(true,false))repeat(30){
@@ -83,6 +88,11 @@ class FinanceUiTest {
         }
         device.dumpWindowHierarchy(java.io.File("/sdcard/Download/android23-failure.xml"))
         return text(selector)
+    }
+    private fun financeSection(section:String){
+        val group=app.veyra.model.NavigationPolicy.financeSections.entries.first{section in it.value}.key
+        scrollTo(By.textStartsWith("Área financeira:")).click();text(By.text(group)).click()
+        scrollTo(By.textStartsWith("Seção:")).click();text(By.text(section)).click()
     }
     private fun awaitRecord(predicate:(Item)->Boolean):Item {
         val deadline=SystemClock.elapsedRealtime()+20_000
@@ -112,7 +122,7 @@ class FinanceUiTest {
         val account=FinancialDomain.normalize(Item(id="finance-ui-account-$token",type="account",title="Conta UI $token",fields=mapOf("opening" to "10.00","currency" to "BRL")))
         WorkspaceStore(context).use{it.save(account)}
         ActivityScenario.launch(MainActivity::class.java).use{
-            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Contas")).click()
+            goFinance();financeSection("Contas")
             scrollTo(By.text("Conta UI $token"));scrollTo(By.text("Editar")).click()
             text(By.text("Conta ou carteira"))
             val fields=device.findObjects(By.clazz("android.widget.EditText"))
@@ -131,7 +141,7 @@ class FinanceUiTest {
         val buy=FinancialDomain.normalize(Item(id="partial-buy-$token",type="expense",title="Compra parcial $token",date=today.toString(),fields=mapOf("amountMinor" to "10001","card" to card.id,"status" to "pending","currency" to "BRL","category" to "Compras")))
         WorkspaceStore(context).use{it.saveAll(listOf(account,card,buy))}
         ActivityScenario.launch(MainActivity::class.java).use{
-            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Cartões")).click()
+            goFinance();financeSection("Cartões")
             repeat(3){
                 if(!device.hasObject(By.text("Registrar pagamento"))){
                     val button=scrollTo(By.text("Registrar pagamento da fatura"))
@@ -162,16 +172,20 @@ class FinanceUiTest {
     @Test fun simulatorDoesNotWriteTransactionsAndHonorsPrivacy(){
         val account=FinancialDomain.normalize(Item(id="scenario-account-$token",type="account",title="Conta cenário $token",fields=mapOf("openingMinor" to "100000","currency" to "BRL")))
         WorkspaceStore(context).use{it.save(account)}
-        val before=WorkspaceStore(context).use{it.exportJson()}
+        val before=WorkspaceStore(context).use{exportWithoutNavigationUsage(it)}
         ActivityScenario.launch(MainActivity::class.java).use{
-            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Simulador")).click()
+            goFinance();financeSection("Simulador")
             scrollTo(By.text("Entrada extra"))
             val fields=device.findObjects(By.clazz("android.widget.EditText"));Assert.assertTrue(fields.isNotEmpty())
             fields[0].text="100,00";hideKeyboard()
-            scrollTo(By.text("Seu cenário"));Assert.assertEquals(before,WorkspaceStore(context).use{it.exportJson()})
+            scrollTo(By.text("Seu cenário"));Assert.assertEquals(before,WorkspaceStore(context).use{exportWithoutNavigationUsage(it)})
             scrollTo(By.textContains("Margem diária adicional:"));device.takeScreenshot(java.io.File("/sdcard/Download/veyra-scenario-2.1.png"))
-            repeat(10){device.swipe(device.displayWidth/2,device.displayHeight/3,device.displayWidth/2,device.displayHeight*3/4,15)}
+            scrollTo(By.desc("Ocultar valores"));device.waitForIdle();SystemClock.sleep(500)
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-simulator-toggle-2.7.png"))
             text(By.desc("Ocultar valores")).click()
+            val hiddenDeadline=SystemClock.elapsedRealtime()+10_000
+            while(SystemClock.elapsedRealtime()<hiddenDeadline && WorkspaceStore(context).use{it.preferences()["financeHidden"]}!="Sim")SystemClock.sleep(100)
+            WorkspaceStore(context).use{Assert.assertEquals("Sim",it.preferences()["financeHidden"])}
             scrollTo(By.text("Exiba os valores no topo para usar o simulador."))
             Assert.assertFalse(device.hasObject(By.text("Seu cenário")))
         }
@@ -182,7 +196,7 @@ class FinanceUiTest {
         val copy=original.copy(id="review-b-$token")
         WorkspaceStore(context).use{it.saveAll(listOf(original,copy))}
         ActivityScenario.launch(MainActivity::class.java).use{
-            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Conferência")).click()
+            goFinance();financeSection("Conferência")
             scrollTo(By.text("Possível duplicidade · 2 registros"))
             device.takeScreenshot(java.io.File("/sdcard/Download/veyra-review-2.1.png"))
             WorkspaceStore(context).use{store->Assert.assertEquals(0L,store.find(original.id)!!.deletedAt);Assert.assertEquals(0L,store.find(copy.id)!!.deletedAt)}
@@ -206,7 +220,7 @@ class FinanceUiTest {
             Assert.assertEquals(1,app.veyra.feature.finance.FinanceReports.select(rows,today.withDayOfMonth(1),today.withDayOfMonth(today.lengthOfMonth()),"BRL",app.veyra.feature.finance.ReportBasis.CASH).entries.size)
         }
         ActivityScenario.launch(MainActivity::class.java).use{
-            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Relatórios")).click()
+            goFinance();financeSection("Relatórios")
             scrollTo(By.text("Analisar: Gastos registrados")).click();text(By.text("Fluxo de caixa")).click()
             text(By.text("Analisar: Fluxo de caixa"))
             scrollTo(By.text("1 registro selecionado"))
@@ -270,7 +284,7 @@ class FinanceUiTest {
         val other=expense.copy(id="chart-other-$token",fields=expense.fields+mapOf("amountMinor" to "20000","amount" to "200.00","category" to "Transporte"))
         WorkspaceStore(context).use{it.saveAll(listOf(income,expense,other))}
         ActivityScenario.launch(MainActivity::class.java).use{scenario->
-            goFinance();scrollTo(By.text("Explorar: Resumo")).click();text(By.text("Relatórios")).click()
+            goFinance();financeSection("Relatórios")
             scrollTo(By.text("Visualização: Barras"))
             scrollTo(By.descContains("Gráfico de barras"))
             var current="Barras"
