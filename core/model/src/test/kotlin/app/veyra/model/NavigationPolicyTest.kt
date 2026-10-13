@@ -1,6 +1,12 @@
 package app.veyra.model
 import kotlin.test.*
 class NavigationPolicyTest {
+    @Test fun backStackKeepsRealVisitsWithoutDuplicatesAndHasBoundedMemory(){
+        val ids=(0..30).map{"p$it"}.toSet();var stack=listOf("p0")
+        ids.forEach{stack=NavigationPolicy.push(stack,it,ids)}
+        assertEquals(20,stack.size);assertEquals("p30",stack.last());assertEquals("p29",stack.dropLast(1).last())
+        assertEquals(stack,NavigationPolicy.push(stack,"p30",ids));assertEquals(stack,NavigationPolicy.push(stack,"invalid",ids))
+    }
     @Test fun discoveryAcceptsUnaccentedQueries(){assertTrue(NavigationPolicy.matches("Relógio mundial","relogio"));assertTrue(NavigationPolicy.matches("Finanças"," FINANCAS "));assertFalse(NavigationPolicy.matches("Notas","seguranca"))}
     @Test fun stalePreferencesNeverRemoveAvailableDestinations(){
         val ids=listOf("notes","task","finance","hub")

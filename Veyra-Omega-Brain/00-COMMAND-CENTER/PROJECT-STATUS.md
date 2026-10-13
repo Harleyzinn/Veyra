@@ -4,15 +4,15 @@ title: "Project Status"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T15:59:12+00:00"
-sources: ["repo:app/build.gradle.kts", "repo:apps/desktop/package.json", "repo:docs/VALIDATION-NAVIGATION.md", "repo:docs/NAVIGATION.md"]
-expires_at: "2026-10-20T15:59:12+00:00"
+updated_at: "2026-10-13T18:55:53+00:00"
+sources: ["repo:app/build.gradle.kts", "repo:apps/desktop/package.json", "repo:docs/VALIDATION-2.8.0.md", "repo:docs/RELEASE-2.8.0.md"]
+expires_at: "2026-10-20T18:55:53+00:00"
 ---
 
-# Estado em revisão local
+# Estado local
 
-Android 2.7.0 (270) e Windows 4.2.0: navegação reorganizada, artefatos locais testados. Últimas versões públicas registradas na memória: Android 2.4.0 e Windows 4.1.0; GitHub não consultado nem publicação executada nesta rodada.
+Android 2.8.0 (280): filtros e rascunho de tarefa preservados ao navegar; Voltar percorre histórico real, limitado a 20 destinos. Windows 4.2.0 sem alteração nesta sessão. Artefatos locais, sem publicação; últimas versões públicas registradas na memória permanecem Android 2.4.0/Windows 4.1.0, não reconferidas no GitHub.
 
-157 testes de núcleo Android, 57 Windows, 22 testes de interface Android e 106 destinos Windows renderizados com sucesso. APK assinado original e executável Windows empacotado conferidos. Ver docs/VALIDATION-NAVIGATION.md e [[NAVIGATION-RESTRUCTURE-2026-10-13]].
+158 testes de núcleo e seis testes de interface Android distintos aprovados após repetição dirigida do teste novo. APK final atualizado em Veyra_QA, versão e assinatura original conferidas. [[CONTEXT-CONTINUITY-2.8-2026-10-13]] · [[CURRENT-PRIORITIES]].
 
-Preferências de menus integradas à fila existente por plataforma; novo transporte remoto entre aparelhos ainda não validado. Firebase remoto, iOS e modelo financeiro não alterados. Omega segue local/textual; embeddings, GitHub incremental e executores pendentes. Cadastro do Vault no Obsidian não reconferido nesta sessão.
+Contexto de apresentação usa estado nativo Compose separado por identidade física do banco; não é backup após força de parada. Banco, Firebase e domínio financeiro sem alterações. Omega local/textual; embeddings e integrações autônomas pendentes.

@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,12 +30,12 @@ internal data class FinanceDashboardData(val summary:FinancialSummary,val projec
 @Composable fun FinanceScreen(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
     val all by vm.financeItems.collectAsState()
     val currency=vm.preferences["financeCurrency"] ?: "BRL";val hidden=vm.preferences["financeHidden"]=="Sim";val financialDay=(vm.preferences["financialDay"]?.toIntOrNull() ?: 1).coerceIn(1,31)
-    var section by remember{mutableStateOf("Resumo")};var month by remember{mutableStateOf(YearMonth.now())};var horizon by remember{mutableStateOf("30 dias")}
-    var reportBasis by remember{mutableStateOf(ReportBasis.PURCHASE)}
-    var query by remember{mutableStateOf("")};var kind by remember{mutableStateOf("")};var status by remember{mutableStateOf("")};var category by remember{mutableStateOf("")};var account by remember{mutableStateOf("")};var card by remember{mutableStateOf("")}
-    var minValue by remember{mutableStateOf("")};var maxValue by remember{mutableStateOf("")};var recurrent by remember{mutableStateOf("Todos")};var installments by remember{mutableStateOf("Todos")}
+    var section by rememberSaveable{mutableStateOf("Resumo")};var month by rememberSaveable(stateSaver=Saver<YearMonth,String>(save={it.toString()},restore={YearMonth.parse(it)})){mutableStateOf(YearMonth.now())};var horizon by rememberSaveable{mutableStateOf("30 dias")}
+    var reportBasis by rememberSaveable{mutableStateOf(ReportBasis.PURCHASE)}
+    var query by rememberSaveable{mutableStateOf("")};var kind by rememberSaveable{mutableStateOf("")};var status by rememberSaveable{mutableStateOf("")};var category by rememberSaveable{mutableStateOf("")};var account by rememberSaveable{mutableStateOf("")};var card by rememberSaveable{mutableStateOf("")}
+    var minValue by rememberSaveable{mutableStateOf("")};var maxValue by rememberSaveable{mutableStateOf("")};var recurrent by rememberSaveable{mutableStateOf("Todos")};var installments by rememberSaveable{mutableStateOf("Todos")}
     val period=FinanceEngine.period(month,financialDay)
-    var fromText by remember(month,financialDay){mutableStateOf(period.start.toString())};var throughText by remember(month,financialDay){mutableStateOf(period.end.toString())}
+    var fromText by rememberSaveable(month,financialDay){mutableStateOf(period.start.toString())};var throughText by rememberSaveable(month,financialDay){mutableStateOf(period.end.toString())}
     var displayLimit by remember(section,month,query,kind,status,category,account,card,minValue,maxValue,recurrent,installments,fromText,throughText){mutableIntStateOf(100)}
     var editor by remember{mutableStateOf<Item?>(null)};var selected by remember{mutableStateOf<Item?>(null)};var deleting by remember{mutableStateOf<Item?>(null)};var seriesTarget by remember{mutableStateOf<Item?>(null)};var seriesDelete by remember{mutableStateOf(false)};var editScope by remember{mutableStateOf<SeriesScope?>(null)}
     var quickActions by remember{mutableStateOf(false)};var cloudOpen by remember{mutableStateOf(false)}

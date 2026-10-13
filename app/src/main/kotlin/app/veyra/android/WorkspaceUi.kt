@@ -19,6 +19,7 @@ import app.veyra.feature.finance.FinancialDomain
 import java.time.LocalDate
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
@@ -31,8 +32,11 @@ import androidx.compose.ui.unit.sp
     val searchResults by vm.searchItems.collectAsState()
     val financialItems by vm.financeItems.collectAsState()
     val home=AppNavigation.resolve(vm.preferences["navHome"].orEmpty().takeIf{it in AppNavigation.ids} ?: "today")
+    val workspace=AndroidJobs.scopeKey(app.veyra.data.WorkspaceIdentity.activeUid(vm.getApplication()))
+    val screenState=key(workspace){rememberSaveableStateHolder()}
+    var backStack by rememberSaveable(workspace){mutableStateOf(listOf(home))}
     fun pageFor(id:String)=when(id){"today"->"Hoje";"agenda"->"Agenda";"finance"->"Finanças";"notes"->"Notas";else->"Mais"}
-    var page by rememberSaveable{mutableStateOf(pageFor(home))};var module by rememberSaveable{mutableStateOf(if(pageFor(home)=="Mais")home.takeUnless{it=="settings"} ?: "hub" else "hub")};var query by rememberSaveable{mutableStateOf("")}
+    var page by rememberSaveable(workspace){mutableStateOf(pageFor(home))};var module by rememberSaveable(workspace){mutableStateOf(if(pageFor(home)=="Mais")home.takeUnless{it=="settings"} ?: "hub" else "hub")};var query by rememberSaveable{mutableStateOf("")}
     var searching by rememberSaveable{mutableStateOf(false)}
     var editor by remember{mutableStateOf<Item?>(if(shared!=null)Item(type="note",title="",notes=shared)else if(shortcut!=null || capture)Item(type=shortcut ?: "note",title="")else null)}
     var detail by remember{mutableStateOf<Item?>(null)};var deleting by remember{mutableStateOf<Item?>(null)}
@@ -40,7 +44,7 @@ import androidx.compose.ui.unit.sp
     val snackbar=remember{SnackbarHostState()}
     LaunchedEffect(query){vm.globalSearch(query)}
     LaunchedEffect(openUpdates,entryRevision){if(openUpdates)showSettings=true}
-    LaunchedEffect(openFinance,entryRevision){if(openFinance){page="Finanças";showSettings=false}}
+    LaunchedEffect(openFinance,entryRevision){if(openFinance){page="Finanças";showSettings=false;backStack=NavigationPolicy.push(backStack,"finance",AppNavigation.ids)}}
     LaunchedEffect(entryRevision){if(entryRevision>0){if(shared!=null)editor=Item(type="note",title="",notes=shared)else if(shortcut!=null || capture)editor=Item(type=shortcut ?: "note",title="")}}
     LaunchedEffect(image){image?.let{vm.scan(it)}}
     LaunchedEffect(openId,entryRevision){if(openId!=null)vm.openStoredItem(openId){detail=it}}
@@ -51,9 +55,9 @@ import androidx.compose.ui.unit.sp
     fun navIcon(id:String)=when(id){"today"->Icons.Default.Dashboard;"agenda"->Icons.Default.CalendarMonth;"finance"->Icons.Default.AccountBalanceWallet;"notes"->Icons.AutoMirrored.Filled.Notes;"hub"->Icons.Default.GridView;else->moduleIcon(id)}
     fun navLabel(id:String)=if(id=="hub")"Mais" else AppNavigation.destination(id).label
     fun create(type:String,parent:String=""){editor=Item(type=type,title="",parentId=parent)}
-    fun navigate(type:String){val id=AppNavigation.resolve(type);query="";searching=false;trash=false;if(id=="settings"){showSettings=true}else{page=pageFor(id);if(page=="Mais")module=id};vm.navigationVisit(id)}
+    fun navigate(type:String){val id=AppNavigation.resolve(type);query="";searching=false;trash=false;if(id=="settings"){showSettings=true}else{backStack=NavigationPolicy.push(backStack,id,AppNavigation.ids);page=pageFor(id);if(page=="Mais")module=id};vm.navigationVisit(id)}
     LaunchedEffect(Unit){vm.navigationVisit(destinationId)}
-    BackHandler(enabled=page!="Hoje" || searching){if(searching){searching=false;query=""}else if(page=="Mais" && module!="hub"){module="hub";trash=false}else page="Hoje"}
+    BackHandler(enabled=searching || backStack.size>1){if(searching){searching=false;query=""}else{backStack=backStack.dropLast(1);val previous=backStack.last();page=pageFor(previous);if(page=="Mais")module=previous;trash=false;vm.navigationVisit(previous)}}
     Scaffold(snackbarHost={SnackbarHost(snackbar)},topBar={TopAppBar(title={Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){Box(Modifier.size(30.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),contentAlignment=Alignment.Center){Text("v",color=MaterialTheme.colorScheme.onPrimary,fontWeight=FontWeight.ExtraBold,fontSize=23.sp)};Text("veyra",fontWeight=FontWeight.ExtraBold,letterSpacing=(-1).sp,fontSize=24.sp)}},colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background),actions={IconButton(onClick={searching=!searching;query=""}){Icon(Icons.Default.Search,"Buscar")};IconButton(onClick={navigate("settings")}){Icon(Icons.Default.Tune,"Configurações")}})},
         bottomBar={BoxWithConstraints{if(maxWidth<600.dp)NavigationBar(containerColor=MaterialTheme.colorScheme.background,tonalElevation=0.dp){tabs.forEach{id->NavigationBarItem(selected=destinationId==id || id=="hub"&&destinationId !in tabs,onClick={navigate(id)},icon={Icon(navIcon(id),null)},label={Text(navLabel(id),maxLines=1)},colors=NavigationBarItemDefaults.colors(indicatorColor=MaterialTheme.colorScheme.primaryContainer))}}}},
         floatingActionButton={if(page in setOf("Hoje","Agenda") || page=="Mais" && module !in setOf("city","tools","assistant","hub","task","focus","routine","sketch","scanner","decisions","playroom","worldclock","navigation","settings"))FloatingActionButton(modifier=Modifier.semantics{contentDescription="Capturar"},containerColor=MaterialTheme.colorScheme.primary,onClick={create(when(page){"Agenda"->"task";"Mais"->module.takeUnless{it in listOf("favorites","timeline")} ?: "note";else->"task"})}){Icon(Icons.Default.Add,null)}}
@@ -70,19 +74,19 @@ import androidx.compose.ui.unit.sp
                 LazyRow(contentPadding=PaddingValues(horizontal=20.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){items(AppNavigation.search(query),key={it.id}){d->AssistChip(onClick={navigate(d.id)},label={Text(d.label)})}}
                 FinanceSurface(vm,searchResults.any{financeSensitive(it,items)}){ItemList(searchResults,{vm.loadFullItem(it){full->detail=full}},{vm.loadFullItem(it){full->editor=full}},{deleting=it},vm)}
             }
-            else when(page){
+            else screenState.SaveableStateProvider("$workspace:$destinationId"){when(page){
                 "Hoje"->TodayScreen(items,vm,{detail=it},{create(it)},::navigate)
                 "Agenda"->AgendaScreen(items,{detail=it},{date->editor=Item(type="event",title="",date=date)},vm)
                 "Finanças"->FinanceAccessGate(vm){FinanceScreen(items,vm,{detail=it},{create(it)})}
                 "Notas"->NotesStudio(items,vm,{detail=it},{create(it)})
                 "Mais"->{if(module=="hub")NavigationHub(vm,::navigate)else{
-                    Row(Modifier.padding(horizontal=20.dp)){TextButton(onClick={navigate("hub")}){Text("← Todos os módulos")};TextButton(onClick={trash=!trash}){Text(if(trash)"Sair da lixeira"else "Lixeira")}}
+                    Row(Modifier.padding(horizontal=20.dp)){TextButton(onClick={navigate("hub")}){Text("← Todos os módulos")};if(module!="navigation")TextButton(onClick={trash=!trash}){Text(if(trash)"Sair da lixeira"else "Lixeira")}}
                     if(trash)FinanceSurface(vm,all.any{it.deletedAt!=0L && financeSensitive(it,items)}){ItemList(all.filter{it.deletedAt!=0L && it.value("purged")!="yes" && !(it.title=="Registro excluído" && it.fields.isEmpty())},{if(it.type in FinancialDomain.financialTypes)vm.restoreFinance(it)else vm.save(it.copy(deletedAt=0))},{if(it.type in FinancialDomain.financialTypes)vm.restoreFinance(it)else vm.save(it.copy(deletedAt=0))},{},vm)}
                     else if(module=="navigation")NavigationCustomization(vm)
                     else FinanceSurface(vm,module in FinancialDomain.financialTypes || module in setOf("routine","assistant","favorites","timeline","trip","vehicle","subscription_audit") || items.any{it.type==module && financeSensitive(it,items)}){when{module=="routine"->RoutineStudio(items,vm,{detail=it},::navigate);module in ExtraCatalog.specs.map{it.type}->ExtraStudio(module,items,vm,{detail=it},{editor=it},{deleting=it},{create(it)});else->when(module){"sketch"->SketchStudio(items,vm,{detail=it});"scanner"->ScannerStudio(vm);"decisions"->DecisionStudio(vm);"playroom"->GamesStudio();"worldclock"->WorldClockStudio(vm);"city"->WeatherScreen(items,vm);"task"->TasksStudio(items,vm,{detail=it},{create(it)});"tools"->ToolsScreen();"assistant"->AssistantScreen(vm);else->ModuleScreen(module,items,vm,{detail=it},{editor=it},{deleting=it},{create(it)})}}}
                 }}
             }
-        }}}
+        }}}}
     }
     if(vm.preferences["name"].isNullOrBlank())Onboarding(vm)
     editor?.let{draft->when(draft.type){

@@ -2,6 +2,7 @@ package app.veyra.model
 
 /** Menu data never authorizes execution or removes a destination from discovery. */
 object NavigationPolicy {
+    fun push(stack:List<String>,id:String,available:Set<String>):List<String> = if(id !in available || stack.lastOrNull()==id)stack else (stack+id).takeLast(20)
     fun matches(text:String,query:String):Boolean {
         fun fold(value:String)=java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"),"").lowercase(java.util.Locale.ROOT)
         return fold(text).contains(fold(query.trim()))

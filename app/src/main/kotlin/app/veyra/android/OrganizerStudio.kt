@@ -18,8 +18,8 @@ import app.veyra.model.*
 import java.time.LocalDate
 
 @Composable fun TasksStudio(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
-    var order by remember{mutableStateOf(TaskOrder.PRIORITY)}
-    var filter by remember{mutableStateOf("Pendentes")};var priority by remember{mutableStateOf("Todas")};var query by remember{mutableStateOf("")};var quick by rememberSaveable{mutableStateOf("")}
+    var order by rememberSaveable{mutableStateOf(TaskOrder.PRIORITY)}
+    var filter by rememberSaveable{mutableStateOf("Pendentes")};var priority by rememberSaveable{mutableStateOf("Todas")};var query by rememberSaveable{mutableStateOf("")};var quick by rememberSaveable{mutableStateOf("")}
     var quickDay by rememberSaveable{mutableStateOf("Hoje")};var quickPriority by rememberSaveable{mutableStateOf("Média")}
     val today=LocalDate.now();val tasks=items.filter{it.type=="task" && it.deletedAt==0L};val data=Organizer.tasks(tasks.filter{(query.isBlank() || Workspace.matches(it,query)) && (priority=="Todas" || it.value("priority")==priority) && Organizer.taskScope(it,filter,today)},order)
     LazyColumn(contentPadding=PaddingValues(start=22.dp,end=22.dp,top=10.dp,bottom=110.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
@@ -43,9 +43,9 @@ import java.time.LocalDate
     }
 }
 @Composable fun NotesStudio(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
-    var order by remember{mutableStateOf(NoteOrder.CREATED)}
+    var order by rememberSaveable{mutableStateOf(NoteOrder.CREATED)}
     var noteFilter by rememberSaveable{mutableStateOf(NoteFilter.ALL)}
-    var area by remember{mutableStateOf("note")};var query by remember{mutableStateOf("")};var folder by remember{mutableStateOf("Todas")};var archived by remember{mutableStateOf(false)}
+    var area by rememberSaveable{mutableStateOf("note")};var query by rememberSaveable{mutableStateOf("")};var folder by rememberSaveable{mutableStateOf("Todas")};var archived by rememberSaveable{mutableStateOf(false)}
     val notes=Organizer.notes(items.filter{it.type==area && Organizer.noteMatches(it,noteFilter) && (area!="note" || (it.value("archived")=="Sim")==archived) && (query.isBlank() || Workspace.matches(it,query)) && (folder=="Todas" || it.value("folder")==folder)},order)
     LazyColumn(contentPadding=PaddingValues(start=22.dp,end=22.dp,top=10.dp,bottom=110.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
         item{PageHeading("SEU SEGUNDO CÉREBRO","Ideias merecem espaço.","Anote agora. Encontre quando precisar.")}
@@ -53,9 +53,9 @@ import java.time.LocalDate
         item{OutlinedTextField(query,{query=it},label={Text("Buscar nas suas ideias")},leadingIcon={Icon(Icons.Default.Search,null)},modifier=Modifier.fillMaxWidth(),singleLine=true)}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){NoteFilter.entries.forEach{entry->FilterChip(selected=noteFilter==entry,onClick={noteFilter=entry},label={Text(entry.label)})}}}
         item{Row(verticalAlignment=Alignment.CenterVertically){Button(onClick={create(area)},modifier=Modifier.weight(1f)){Icon(Icons.Default.Add,null,Modifier.size(18.dp));Text(if(area=="note")"Nova nota"else if(area=="journal")"Escrever no diário"else "Salvar link")};if(area=="note")IconButton(onClick={archived=!archived}){Icon(if(archived)Icons.Default.Unarchive else Icons.Default.Inventory2,if(archived)"Mostrar notas ativas"else "Mostrar arquivadas")}};if(area=="note")Choice("Pasta",listOf("Todas")+items.filter{it.type=="note"}.map{it.value("folder")}.filter{it.isNotBlank()}.distinct(),folder,{folder=it})}
-        item{Choice("Ordenar notas",NoteOrder.entries.map{it.name},order.name,{order=NoteOrder.valueOf(it)}){NoteOrder.valueOf(it).label};Text("${notes.size} registros",style=MaterialTheme.typography.bodySmall)}
+        item{Choice("Ordenar notas",NoteOrder.entries.map{it.name},order.name,{order=NoteOrder.valueOf(it)}){NoteOrder.valueOf(it).label};Row(verticalAlignment=Alignment.CenterVertically){Text("${notes.size} "+if(notes.size==1)"registro"else"registros",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall);if(query.isNotBlank() || folder!="Todas" || noteFilter!=NoteFilter.ALL)TextButton(onClick={query="";folder="Todas";noteFilter=NoteFilter.ALL}){Text("Limpar filtros")}}}
         if(archived && area=="note")item{Text("Arquivo de notas",color=MaterialTheme.colorScheme.primary)}
-        if(notes.isEmpty())item{EmptyCard("Uma página em branco","Guarde ideias, listas, histórias ou aquele link que vale revisitar.")}
+        if(notes.isEmpty())item{if(query.isNotBlank() || folder!="Todas" || noteFilter!=NoteFilter.ALL)EmptyCard("Nenhuma nota com esses filtros","Use Limpar filtros para voltar à lista. Seu conteúdo continua salvo.")else EmptyCard("Uma página em branco","Guarde ideias, listas, histórias ou aquele link que vale revisitar.")}
         items(notes,key={it.id}){note->Card(onClick={open(note)},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){IconBadge(moduleIcon(note.type),size=32);Spacer(Modifier.width(12.dp));Text(dateLabel(note.date),Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 IconButton(onClick={vm.toggleNoteFlag(note.id,true)},enabled=!vm.busy){Icon(Icons.Default.PushPin,if(Organizer.pinned(note))"Desafixar ${note.title}"else"Fixar ${note.title}",tint=if(Organizer.pinned(note))MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)}
