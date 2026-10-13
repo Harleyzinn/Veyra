@@ -2,6 +2,10 @@
 
 Sua vida, em um só lugar. Android nativo em Kotlin/Jetpack Compose e aplicativo Windows integrado ao mesmo Firebase e à mesma conta Google.
 
+## Omega Brain
+
+Fundação operacional local em `Veyra-Omega-Brain`: notas com proveniência, SQLite/FTS5, contexto seletivo, dashboard, auditoria e backup/restauração. [Instalação e operação](docs/omega/README.md) · [Descoberta](docs/omega/DISCOVERY.md) · [Testes executados e limites](docs/omega/VALIDATION.md). Busca semântica, sincronização incremental do GitHub e ponte de IA são fases seguintes.
+
 ## Windows + celular
 
 Baixe o [instalador Veyra Life Desktop 4.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o [APK Android 2.4.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.4.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 4.1.0](docs/VALIDATION-DESKTOP-4.1.0.md).

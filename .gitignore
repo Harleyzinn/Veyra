@@ -23,3 +23,6 @@ apps/desktop/resources/firebase.json
 apps/desktop/resources/sql-wasm.wasm
 apps/desktop/.qa/
 *.tsbuildinfo
+.omega/
+**/__pycache__/
+Veyra-Omega-Brain/.obsidian/workspace*.json

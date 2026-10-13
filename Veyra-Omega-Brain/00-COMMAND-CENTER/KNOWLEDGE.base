@@ -1,0 +1,13 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - '!file.inFolder("20-TEMPLATES")'
+views:
+  - type: table
+    name: Conhecimento
+    order:
+      - file.name
+      - memory_type
+      - verification
+      - updated_at
+      - sources

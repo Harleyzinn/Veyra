@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Omega note metadata v1",
+  "type": "object",
+  "required": ["id", "title", "memory_type", "verification", "created_at", "updated_at", "sources"],
+  "properties": {
+    "id": {"type": "string", "format": "uuid"},
+    "title": {"type": "string", "minLength": 1},
+    "memory_type": {"enum": ["core", "working", "episodic", "semantic", "procedural", "decision", "failure", "archived"]},
+    "verification": {"enum": ["verified", "hypothesis", "approved_decision", "ai_suggestion", "outdated", "conflicting", "test_result", "unconfirmed"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  },
+  "additionalProperties": true
+}
