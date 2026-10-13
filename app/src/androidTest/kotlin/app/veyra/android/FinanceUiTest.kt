@@ -365,4 +365,25 @@ class FinanceUiTest {
             Assert.assertFalse(device.hasObject(By.text("− Gasto")))
         }
     }
+
+    @Test fun noteFiltersArchiveAndRestorePreserveFullRecord(){
+        val a=Item(id="archive26-a-$token",type="note",title="Guardada $token",notes="Conteúdo preservado. ".repeat(150),favorite=true,fields=mapOf("pinned" to "yes","folder" to "Teste"))
+        val b=a.copy(id="archive26-b-$token",title="Outra $token",favorite=false,fields=mapOf("folder" to "Teste"))
+        WorkspaceStore(context).use{it.saveAll(listOf(a,b))}
+        try{ActivityScenario.launch(MainActivity::class.java).use{
+            device.wait(Until.findObjects(By.text("Notas")),30_000).maxBy{it.visibleBounds.centerY()}.click()
+            text(By.clazz("android.widget.EditText")).text=token;hideKeyboard()
+            scrollTo(By.text("Favoritas")).click();scrollTo(By.text(a.title))
+            Assert.assertFalse(device.hasObject(By.text(b.title)))
+            scrollTo(By.text("Fixadas")).click();scrollTo(By.desc("Arquivar ${a.title}")).click()
+            val archived=awaitRecord{it.id==a.id && it.value("archived")=="Sim"}
+            Assert.assertEquals(a.notes,archived.notes);Assert.assertTrue(archived.favorite)
+            scrollTo(By.desc("Mostrar arquivadas")).click()
+            scrollTo(By.desc("Restaurar ${a.title}")).click()
+            val restored=awaitRecord{it.id==a.id && it.value("archived")=="Não"}
+            Assert.assertEquals(a.notes,restored.notes);Assert.assertEquals("yes",restored.value("pinned"))
+            scrollTo(By.desc("Mostrar notas ativas")).click();scrollTo(By.text(a.title))
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-notes-2.6.png"))
+        }}finally{WorkspaceStore(context).use{store->listOf(a,b).forEach{store.trash(it.id)}}}
+    }
 }

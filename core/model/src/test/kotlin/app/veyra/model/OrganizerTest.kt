@@ -3,6 +3,27 @@ package app.veyra.model
 import kotlin.test.*
 
 class OrganizerTest {
+    @Test fun upcomingScopesIncludeExactlySevenCalendarDaysAndExcludeDoneOrDeleted(){
+        val today=java.time.LocalDate.of(2026,10,13)
+        val item=Item(type="task",title="Tarefa",date=today.plusDays(6).toString())
+        assertTrue(Organizer.taskScope(item,"Próximos 7 dias",today))
+        assertFalse(Organizer.taskScope(item.copy(date=today.plusDays(7).toString()),"Próximos 7 dias",today))
+        assertFalse(Organizer.taskScope(item.copy(done=true),"Próximos 7 dias",today))
+        assertFalse(Organizer.taskScope(item.copy(deletedAt=1),"Todas",today))
+        assertTrue(Organizer.taskScope(item.copy(date=today.plusDays(1).toString()),"Amanhã",today))
+        assertFalse(Organizer.taskScope(item.copy(date="inválida"),"Atrasadas",today))
+    }
+    @Test fun archiveRestorePreservesContentPinFavoriteAndMetadata(){
+        val note=Item(type="note",title="Nota",notes="Texto completo".repeat(100),favorite=true,fields=mapOf("pinned" to "yes","attachment" to "local"))
+        val archived=Organizer.toggleArchived(note)
+        assertEquals("Sim",archived.value("archived"));assertEquals(note.notes,archived.notes)
+        assertEquals("local",archived.value("attachment"));assertTrue(Organizer.pinned(archived))
+        assertTrue(Organizer.noteMatches(archived,NoteFilter.FAVORITES))
+        assertTrue(Organizer.noteMatches(archived,NoteFilter.PINNED))
+        assertFalse(Organizer.noteMatches(note.copy(favorite=false),NoteFilter.FAVORITES))
+        assertEquals("Não",Organizer.toggleArchived(archived).value("archived"))
+        assertFailsWith<IllegalArgumentException>{Organizer.toggleArchived(note.copy(type="task"))}
+    }
     @Test fun quickTaskHonorsDatePriorityAndRejectsInvalidTitles() {
         val today=java.time.LocalDate.of(2026,10,12)
         val task=Organizer.quickTask("  Fazer revisão  ",today,"Alta")

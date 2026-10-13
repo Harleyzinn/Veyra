@@ -2,8 +2,27 @@ package app.veyra.model
 
 enum class TaskOrder(val label: String) { PRIORITY("Prioridade"), DEADLINE("Prazo"), RECENT("Mais recentes") }
 enum class NoteOrder(val label: String) { CREATED("Mais recentes"), TITLE("Título") }
+enum class NoteFilter(val label: String) { ALL("Todas"), FAVORITES("Favoritas"), PINNED("Fixadas") }
 
 object Organizer {
+    fun taskScope(item: Item, scope: String, today: java.time.LocalDate): Boolean {
+        if(item.type!="task" || item.deletedAt!=0L)return false
+        val day=runCatching{java.time.LocalDate.parse(item.date)}.getOrNull()
+        return when(scope){
+            "Hoje"->!item.done && day==today
+            "Amanhã"->!item.done && day==today.plusDays(1)
+            "Próximos 7 dias"->!item.done && day!=null && day in today..today.plusDays(6)
+            "Atrasadas"->!item.done && day!=null && day<today
+            "Concluídas"->item.done
+            "Todas"->true
+            else->!item.done
+        }
+    }
+    fun noteMatches(item:Item,filter:NoteFilter)=when(filter){NoteFilter.ALL->true;NoteFilter.FAVORITES->item.favorite;NoteFilter.PINNED->pinned(item)}
+    fun toggleArchived(item:Item):Item {
+        require(item.type=="note" && item.deletedAt==0L){"Nota indisponível"}
+        return item.copy(fields=item.fields+("archived" to if(item.value("archived")=="Sim")"Não"else"Sim"))
+    }
     fun quickTask(title: String, day: java.time.LocalDate?, priority: String): Item {
         require(title.trim().length in 1..200) { "Use um título entre 1 e 200 caracteres" }
         require(priority in setOf("Baixa", "Média", "Alta", "Urgente")) { "Prioridade inválida" }

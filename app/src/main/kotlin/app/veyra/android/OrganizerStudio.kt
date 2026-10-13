@@ -21,7 +21,7 @@ import java.time.LocalDate
     var order by remember{mutableStateOf(TaskOrder.PRIORITY)}
     var filter by remember{mutableStateOf("Pendentes")};var priority by remember{mutableStateOf("Todas")};var query by remember{mutableStateOf("")};var quick by rememberSaveable{mutableStateOf("")}
     var quickDay by rememberSaveable{mutableStateOf("Hoje")};var quickPriority by rememberSaveable{mutableStateOf("Média")}
-    val today=LocalDate.now().toString();val tasks=items.filter{it.type=="task" && it.deletedAt==0L};val data=Organizer.tasks(tasks.filter{(query.isBlank() || Workspace.matches(it,query)) && (priority=="Todas" || it.value("priority")==priority) && when(filter){"Hoje"->it.date==today && !it.done;"Atrasadas"->it.date.isNotBlank() && it.date<today && !it.done;"Concluídas"->it.done;"Todas"->true;else->!it.done}},order)
+    val today=LocalDate.now();val tasks=items.filter{it.type=="task" && it.deletedAt==0L};val data=Organizer.tasks(tasks.filter{(query.isBlank() || Workspace.matches(it,query)) && (priority=="Todas" || it.value("priority")==priority) && Organizer.taskScope(it,filter,today)},order)
     LazyColumn(contentPadding=PaddingValues(start=22.dp,end=22.dp,top=10.dp,bottom=110.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
         item{PageHeading("PRODUTIVIDADE","Do plano à prática.","Organize, priorize e celebre cada passo.")}
         item{Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){MiniMetric("Pendentes",tasks.count{!it.done}.toString(),moduleIcon("task"),MaterialTheme.colorScheme.primary,Modifier.weight(1f));MiniMetric("Concluídas",tasks.count{it.done}.toString(),Icons.Default.DoneAll,MaterialTheme.colorScheme.secondary,Modifier.weight(1f))}}
@@ -35,7 +35,8 @@ import java.time.LocalDate
                 TextButton(onClick={create("task")},enabled=!vm.busy){Text("Mais opções")}
             }
         }}
-        item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("Pendentes","Hoje","Atrasadas","Concluídas","Todas").forEach{FilterChip(selected=filter==it,onClick={filter=it},label={Text(it)})}}}
+        item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("Pendentes","Hoje","Amanhã","Próximos 7 dias","Atrasadas","Concluídas","Todas").forEach{FilterChip(selected=filter==it,onClick={filter=it},label={Text(it)})}}}
+        if(filter=="Próximos 7 dias")item{Text("De ${dateLabel(today.toString())} a ${dateLabel(today.plusDays(6).toString())} · tarefas pendentes",style=MaterialTheme.typography.bodySmall)}
         item{OutlinedTextField(query,{query=it},label={Text("Buscar tarefa")},leadingIcon={Icon(Icons.Default.Search,null)},modifier=Modifier.fillMaxWidth(),singleLine=true);Choice("Prioridade",listOf("Todas","Baixa","Média","Alta","Urgente"),priority,{priority=it});Choice("Ordenar tarefas",TaskOrder.entries.map{it.name},order.name,{order=TaskOrder.valueOf(it)}){TaskOrder.valueOf(it).label};Row{Text("${data.size} tarefas",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall);TextButton(onClick={query="";priority="Todas";filter="Pendentes";order=TaskOrder.PRIORITY}){Text("Limpar filtros")}}}
         if(data.isEmpty())item{EmptyCard("Tudo em ordem por aqui","Adicione uma tarefa ou escolha outro filtro.")}
         items(data,key={it.id}){i->StudioCard{CompactTask(i,vm,open);Row(verticalAlignment=Alignment.CenterVertically){Text(i.value("priority").ifBlank{"Sem prioridade"},Modifier.weight(1f),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary);Text(i.value("status").ifBlank{if(i.done)"Concluído"else "A fazer"},style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
@@ -43,12 +44,14 @@ import java.time.LocalDate
 }
 @Composable fun NotesStudio(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
     var order by remember{mutableStateOf(NoteOrder.CREATED)}
+    var noteFilter by rememberSaveable{mutableStateOf(NoteFilter.ALL)}
     var area by remember{mutableStateOf("note")};var query by remember{mutableStateOf("")};var folder by remember{mutableStateOf("Todas")};var archived by remember{mutableStateOf(false)}
-    val notes=Organizer.notes(items.filter{it.type==area && (area!="note" || (it.value("archived")=="Sim")==archived) && (query.isBlank() || Workspace.matches(it,query)) && (folder=="Todas" || it.value("folder")==folder)},order)
+    val notes=Organizer.notes(items.filter{it.type==area && Organizer.noteMatches(it,noteFilter) && (area!="note" || (it.value("archived")=="Sim")==archived) && (query.isBlank() || Workspace.matches(it,query)) && (folder=="Todas" || it.value("folder")==folder)},order)
     LazyColumn(contentPadding=PaddingValues(start=22.dp,end=22.dp,top=10.dp,bottom=110.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
         item{PageHeading("SEU SEGUNDO CÉREBRO","Ideias merecem espaço.","Anote agora. Encontre quando precisar.")}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("note","journal","link").forEach{type->FilterChip(selected=area==type,onClick={area=type;folder="Todas"},label={Text(when(type){"journal"->"Diário";"link"->"Links";else->"Notas"})})}}}
         item{OutlinedTextField(query,{query=it},label={Text("Buscar nas suas ideias")},leadingIcon={Icon(Icons.Default.Search,null)},modifier=Modifier.fillMaxWidth(),singleLine=true)}
+        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){NoteFilter.entries.forEach{entry->FilterChip(selected=noteFilter==entry,onClick={noteFilter=entry},label={Text(entry.label)})}}}
         item{Row(verticalAlignment=Alignment.CenterVertically){Button(onClick={create(area)},modifier=Modifier.weight(1f)){Icon(Icons.Default.Add,null,Modifier.size(18.dp));Text(if(area=="note")"Nova nota"else if(area=="journal")"Escrever no diário"else "Salvar link")};if(area=="note")IconButton(onClick={archived=!archived}){Icon(if(archived)Icons.Default.Unarchive else Icons.Default.Inventory2,if(archived)"Mostrar notas ativas"else "Mostrar arquivadas")}};if(area=="note")Choice("Pasta",listOf("Todas")+items.filter{it.type=="note"}.map{it.value("folder")}.filter{it.isNotBlank()}.distinct(),folder,{folder=it})}
         item{Choice("Ordenar notas",NoteOrder.entries.map{it.name},order.name,{order=NoteOrder.valueOf(it)}){NoteOrder.valueOf(it).label};Text("${notes.size} registros",style=MaterialTheme.typography.bodySmall)}
         if(archived && area=="note")item{Text("Arquivo de notas",color=MaterialTheme.colorScheme.primary)}
@@ -57,6 +60,7 @@ import java.time.LocalDate
             Row(verticalAlignment=Alignment.CenterVertically){IconBadge(moduleIcon(note.type),size=32);Spacer(Modifier.width(12.dp));Text(dateLabel(note.date),Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 IconButton(onClick={vm.toggleNoteFlag(note.id,true)},enabled=!vm.busy){Icon(Icons.Default.PushPin,if(Organizer.pinned(note))"Desafixar ${note.title}"else"Fixar ${note.title}",tint=if(Organizer.pinned(note))MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)}
                 IconButton(onClick={vm.toggleNoteFlag(note.id,false)},enabled=!vm.busy){Icon(if(note.favorite)Icons.Default.Star else Icons.Default.StarBorder,if(note.favorite)"Remover favorito ${note.title}"else"Favoritar ${note.title}",tint=MaterialTheme.colorScheme.tertiary)}
+                if(note.type=="note")IconButton(onClick={vm.toggleNoteArchive(note.id)},enabled=!vm.busy){Icon(if(archived)Icons.Default.Unarchive else Icons.Default.Inventory2,if(archived)"Restaurar ${note.title}"else"Arquivar ${note.title}")}
             }
             Text(note.title,style=MaterialTheme.typography.titleLarge,maxLines=2,overflow=TextOverflow.Ellipsis)
             if(Organizer.pinned(note))Text("Fixada no topo",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)

@@ -4,13 +4,13 @@ title: "Current Priorities"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T01:13:22+00:00"
-sources: ["user:melhorar-projeto-e-revisar-pendencias:2026-10-12", "repo:docs/AUDIT-2026-10-12.md", "repo:docs/VALIDATION-2.5.0.md"]
-expires_at: "2026-10-20T01:13:22+00:00"
+updated_at: "2026-10-13T09:24:08+00:00"
+sources: ["user:melhore-mais:2026-10-13", "repo:docs/VALIDATION-2.6.0.md", "repo:docs/AUDIT-2026-10-12.md"]
+expires_at: "2026-10-20T09:24:08+00:00"
 ---
 
 # Continuidade
 
-Concluído nesta rodada: data/prioridade em captura rápida, limpeza só após sucesso, fixação/favorito preservando notas, testes financeiros determinísticos, busca sem autoevidência. APK 2.5 local aguardando revisão/autorização para publicar.
+Concluído: Android 2.6 com tarefas amanhã/sete dias, filtros de notas favoritas/fixadas e arquivar/restaurar sem perda de conteúdo. APK local validado; publicação não executada. Captura rápida, limpeza após sucesso e fixação da 2.5 preservadas.
 
-Próximas prioridades propostas: ativar o novo Vault na interface Obsidian; fase 2 de memória com consolidação e proveniência; reduzir consumo Desktop com medição; planejar iOS e validação física de Google/Play Integrity. Essas propostas não são autorização para publicação, cobrança, exclusão ou mudança de segurança.
+Próximas prioridades propostas: validar em celular real; ativar o Vault na interface Obsidian; implementar fase 2 de consolidação com proveniência; medir consumo Desktop; planejar iOS. Publicação e operações sensíveis dependem de autorização humana apropriada. Consulte [[ORGANIZER-2.6-2026-10-13]] e a auditoria de pendências antes de ampliar o escopo.

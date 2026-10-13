@@ -167,6 +167,11 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
         val changed=if(pin)Organizer.togglePinned(latest)else latest.copy(favorite=!latest.favorite)
         Workspace.validate(changed,Registry.spec(changed.type));store.save(changed);message="Salvo"
     }
+    fun toggleNoteArchive(id:String)=operation{
+        val latest=store.find(id) ?: error("Nota indisponível")
+        val changed=Organizer.toggleArchived(latest)
+        Workspace.validate(changed,Registry.spec(changed.type));store.save(changed);message=if(changed.value("archived")=="Sim")"Nota arquivada"else"Nota restaurada"
+    }
     fun delete(item:Item)=operation{val current=store.find(item.id) ?: item;if(item.type in setOf("account","card"))require(!store.hasActiveFinanceReferences(item.id)){"Este registro tem lançamentos vinculados. Transfira ou altere os vínculos antes de excluir."};if(item.type in FinancialDomain.financialTypes)store.saveAll(FinanceActions.trash(current,financeMutationContext(current)))else store.save(current.copy(deletedAt=System.currentTimeMillis()));undoItem=current;message="Movido para a lixeira";AndroidJobs.cancel(getApplication(),item.id);AndroidJobs.financeChanged(getApplication());AndroidJobs.updateWidget(getApplication())}
     fun undo(){undoItem?.let{if(it.type in FinancialDomain.financialTypes)restoreFinance(it)else save(it.copy(deletedAt=0))};undoItem=null}
     fun complete(item:Item)=operation{
