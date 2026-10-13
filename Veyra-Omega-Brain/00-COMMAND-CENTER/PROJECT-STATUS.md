@@ -1,15 +1,18 @@
 ---
 id: "7d622bb3-2d1c-572b-9933-ab06224bcbb6"
 title: "Project Status"
-memory_type: "core"
+memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T00:29:21+00:00"
-sources: ["git:19164ee30a05ae3be96d2c24f07736d44aa844b5:app/build.gradle.kts", "git:19164ee30a05ae3be96d2c24f07736d44aa844b5:apps/desktop/package.json", "git:19164ee30a05ae3be96d2c24f07736d44aa844b5:settings.gradle.kts"]
+updated_at: "2026-10-13T01:13:22+00:00"
+sources: ["repo:app/build.gradle.kts", "repo:apps/desktop/package.json", "repo:docs/AUDIT-2026-10-12.md", "repo:docs/VALIDATION-2.5.0.md"]
+expires_at: "2026-10-20T01:13:22+00:00"
 ---
 
-Android **2.4.0**, Kotlin/Compose, pacote app.veyra.life. Windows **4.1.0**, Electron/React/TypeScript. Branch **main**, commit `19164ee30a05ae3be96d2c24f07736d44aa844b5`.
+# Estado em revisão local
 
-Firebase: configuração e decisões históricas em docs/FIREBASE-SETUP.md; o estado remoto não é revalidado pelo init. Não há implementação iOS identificada na descoberta de 12/10/2026. Ausência no repositório não prova ausência de outro projeto.
+Android 2.5.0 em desenvolvimento, APK assinado local e testes aprovados. Última release pública: 2.4.0. Windows 4.1.0 sem alteração nesta rodada. Omega: fundação local, busca textual e continuidade real; não tem embeddings, GitHub incremental ou executor de agentes.
 
-Omega: fundação local. Consulte [[SYSTEM-HEALTH]] para métricas reais e [[MASTER-ROADMAP]] para fases pendentes.
+Obsidian está instalado, mas Omega ainda não consta do cadastro local de Vaults conferido em 12/10. iOS sem implementação neste repositório. [[CONTINUITY-AUDIT-2026-10-12]] · [[CURRENT-PRIORITIES]].
+
+Verificar Git atual antes de agir; a descoberta inicial em 19164ee é um snapshot histórico, não o HEAD atual.

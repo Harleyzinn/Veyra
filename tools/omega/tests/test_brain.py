@@ -198,6 +198,15 @@ class BrainTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.brain.seal()
 
+    def test_generated_context_does_not_become_its_own_search_evidence(self):
+        self.brain.write("architecture.md",self.note())
+        self.brain.index()
+        self.brain.context("financeiro","MINIMAL")
+        self.brain.dashboard()
+        self.brain.index()
+        paths=[hit["path"] for hit in self.brain.search("financeiro")]
+        self.assertEqual(["architecture.md"],paths)
+
 
 if __name__ == "__main__":
     unittest.main()

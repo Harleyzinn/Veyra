@@ -18,6 +18,11 @@ Home acionável, galeria de widgets, captura local revisável, Inbox, Spotlight,
 
 ## APK e instalação
 
+Em revisão local: Android 2.5.0, captura de tarefas por dia/prioridade, confirmação de
+salvamento e fixação de notas. [Mudanças](docs/RELEASE-2.5.0.md) ·
+[Testes e limites](docs/VALIDATION-2.5.0.md) · [Revisão de pendências](docs/AUDIT-2026-10-12.md).
+O download público abaixo permanece na última versão publicada.
+
 Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O APK release assinado local fica em `dist/Veyra-2.4.0.apk`. Requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
 
 ## Novidades da versão 2.4

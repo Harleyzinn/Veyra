@@ -70,7 +70,7 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
     fun installUpdate(){val release=updateRelease ?: return;val file=updateFile ?: return
         try{GitHubUpdater.install(getApplication(),file,release.version)}catch(e:Exception){updateStatus=e.message ?: "Não foi possível abrir o instalador."}
     }
-    fun operation(action:suspend ()->Unit) {val epoch=workspaceEpoch;viewModelScope.launch {mutex.withLock{
+    fun operation(onDone:()->Unit={},action:suspend ()->Unit) {val epoch=workspaceEpoch;viewModelScope.launch {mutex.withLock{
         if(epoch!=workspaceEpoch)return@withLock
         busy=true
         try {val snapshot=withContext(Dispatchers.IO){
@@ -79,7 +79,7 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
                 if(changes.isNotEmpty())store.saveAll(changes);store.preference("financialMigrationVersion","3")
             }
             action();Triple(store.overview(),store.preferences(),store.financeWindow(financeFrom,financeThrough))
-        };if(epoch==workspaceEpoch){state.value=snapshot.first;preferences=snapshot.second;financeState.value=snapshot.third;loaded=true;cloud.onLocalChanged()}}
+        };if(epoch==workspaceEpoch){state.value=snapshot.first;preferences=snapshot.second;financeState.value=snapshot.third;loaded=true;cloud.onLocalChanged();onDone()}}
         catch(e:CancellationException){throw e}catch(e:Exception){if(epoch==workspaceEpoch){error=e.message ?: "Não foi possível concl​uir";runCatching{withContext(Dispatchers.IO){store.overview() to store.preferences()}}.onSuccess{state.value=it.first;preferences=it.second};loaded=true}}finally{busy=false}
     }}}
     fun loadFinance(from:LocalDate,through:LocalDate){require(!through.isBefore(from));financeFrom=from;financeThrough=through;operation{}}
@@ -153,13 +153,19 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
     override fun onCleared(){cloud.close();store.close();super.onCleared()}
     fun pref(key:String,value:String)=operation{store.preference(key,value)}
     fun autosave(item:Item)=operation{Workspace.validate(item,Registry.spec(item.type));store.save(item)}
-    fun save(item:Item)=operation{
+    fun save(item:Item,onDone:()->Unit={})=operation(onDone=onDone){
         Workspace.validate(item,Registry.spec(item.type))
         var parent=store.find(item.parentId);var steps=0
         while(parent!=null && steps++<100){require(parent.id!=item.id){"Vínculo circular"};val parentId=parent.parentId;parent=store.find(parentId)}
         if(item.type=="transfer")require(item.value("account")!=item.value("destination")){"Escolha contas diferentes"}
         val saved=if(item.type=="task" && item.value("status").isNotBlank())item.copy(done=item.value("status")=="Concluído")else item
         store.save(saved);AndroidJobs.schedule(getApplication(),saved,store.uid);evaluateRules(store);AndroidJobs.updateWidget(getApplication());message="Salvo"
+    }
+    fun toggleNoteFlag(id:String,pin:Boolean)=operation{
+        val latest=store.find(id) ?: error("Nota indisponível")
+        require(latest.type in setOf("note","journal","link") && latest.deletedAt==0L){"Nota indisponível"}
+        val changed=if(pin)Organizer.togglePinned(latest)else latest.copy(favorite=!latest.favorite)
+        Workspace.validate(changed,Registry.spec(changed.type));store.save(changed);message="Salvo"
     }
     fun delete(item:Item)=operation{val current=store.find(item.id) ?: item;if(item.type in setOf("account","card"))require(!store.hasActiveFinanceReferences(item.id)){"Este registro tem lançamentos vinculados. Transfira ou altere os vínculos antes de excluir."};if(item.type in FinancialDomain.financialTypes)store.saveAll(FinanceActions.trash(current,financeMutationContext(current)))else store.save(current.copy(deletedAt=System.currentTimeMillis()));undoItem=current;message="Movido para a lixeira";AndroidJobs.cancel(getApplication(),item.id);AndroidJobs.financeChanged(getApplication());AndroidJobs.updateWidget(getApplication())}
     fun undo(){undoItem?.let{if(it.type in FinancialDomain.financialTypes)restoreFinance(it)else save(it.copy(deletedAt=0))};undoItem=null}

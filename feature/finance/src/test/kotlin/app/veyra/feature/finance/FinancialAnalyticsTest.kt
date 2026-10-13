@@ -46,7 +46,7 @@ class FinancialAnalyticsTest {
         assertEquals(143880L, costs.first().annualMinor)
         assertEquals(1000L, costs.last().monthlyMinor)
         assertEquals(LocalDate.of(2026, 10, 10), costs.first().nextCharge)
-        assertEquals(0L, FinanceEngine.subscriptions(listOf(RecurrenceEngine.pause(monthly, true)), today).single().annualMinor)
+        assertEquals(0L, FinanceEngine.subscriptions(listOf(RecurrenceEngine.pause(monthly, true, at=today)), today).single().annualMinor)
     }
     @Test fun alertsHaveStableIdsPrioritiesAndRealRecordedValues() {
         val overdue = expense("620", "2026-10-01").copy(fields = expense("620").fields + ("status" to "pending"))

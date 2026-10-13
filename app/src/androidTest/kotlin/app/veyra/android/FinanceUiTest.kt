@@ -301,6 +301,59 @@ class FinanceUiTest {
         }
     }
 
+    @Test fun quickTasksSaveTodayTomorrowAndPriorityThenClearDraft(){
+        val titles=listOf("Hoje $token","Amanhã $token")
+        try{ActivityScenario.launch(MainActivity::class.java).use{
+            text(By.text("Tarefas")).click()
+            val field=text(By.clazz("android.widget.EditText"));field.text=titles[0];hideKeyboard()
+            scrollTo(By.text("Adicionar hoje")).click()
+            val saved=awaitRecord{it.type=="task" && it.title==titles[0] && it.deletedAt==0L}
+            Assert.assertEquals(java.time.LocalDate.now().toString(),saved.date)
+            Assert.assertTrue(device.wait(Until.gone(By.clazz("android.widget.EditText").text(titles[0])),10_000))
+            scrollTo(By.text("Quando: Hoje")).click();text(By.text("Amanhã")).click()
+            scrollTo(By.text("Prioridade da captura: Média")).click();text(By.text("Alta")).click()
+            val inputs=device.findObjects(By.clazz("android.widget.EditText"));inputs.minBy{it.visibleBounds.top}.text=titles[1];hideKeyboard()
+            scrollTo(By.text("Adicionar amanhã")).click()
+            val tomorrow=awaitRecord{it.type=="task" && it.title==titles[1] && it.deletedAt==0L}
+            Assert.assertEquals(java.time.LocalDate.now().plusDays(1).toString(),tomorrow.date)
+            Assert.assertEquals("Alta",tomorrow.value("priority"))
+            Assert.assertTrue(device.wait(Until.gone(By.clazz("android.widget.EditText").text(titles[1])),10_000))
+            device.waitForIdle(1500)
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-tasks-2.5.png"))
+        }}finally{WorkspaceStore(context).use{store->store.all().filter{it.title in titles}.forEach{store.trash(it.id)}}}
+    }
+
+    @Test fun rejectedSaveNeverCallsSuccessCallback(){
+        val called=java.util.concurrent.atomic.AtomicBoolean(false)
+        val failed=java.util.concurrent.atomic.AtomicBoolean(false)
+        ActivityScenario.launch(MainActivity::class.java).use{scenario->
+            scenario.onActivity{androidx.lifecycle.ViewModelProvider(it)[VeyraViewModel::class.java].save(Item(type="task",title="")){called.set(true)}}
+            val deadline=SystemClock.elapsedRealtime()+10_000
+            while(!failed.get() && SystemClock.elapsedRealtime()<deadline){scenario.onActivity{failed.set(androidx.lifecycle.ViewModelProvider(it)[VeyraViewModel::class.java].error!=null)};SystemClock.sleep(100)}
+            Assert.assertTrue("Invalid save must report an error",failed.get());Assert.assertFalse(called.get())
+        }
+    }
+
+    @Test fun pinAndFavoriteKeepFullNoteAndMoveItToTop(){
+        val a=Item(id="pin-a-$token",type="note",title="Alfa $token",notes="Texto integral com contexto. ".repeat(100),createdAt=1,fields=mapOf("url" to "https://example.com","folder" to "Teste"))
+        val z=a.copy(id="pin-z-$token",title="Zeta $token",createdAt=2)
+        WorkspaceStore(context).use{it.saveAll(listOf(a,z))}
+        try{ActivityScenario.launch(MainActivity::class.java).use{
+            device.wait(Until.findObjects(By.text("Notas")),30_000).maxBy{it.visibleBounds.centerY()}.click()
+            text(By.clazz("android.widget.EditText")).text=token;hideKeyboard()
+            scrollTo(By.desc("Fixar ${a.title}")).click()
+            awaitRecord{it.id==a.id && it.value("pinned")=="yes"}
+            scrollTo(By.desc("Favoritar ${a.title}")).click()
+            val favorite=awaitRecord{it.id==a.id && it.favorite}
+            Assert.assertEquals(a.notes,favorite.notes);Assert.assertEquals(a.value("url"),favorite.value("url"))
+            scrollTo(By.text("Fixada no topo"))
+            device.takeScreenshot(java.io.File("/sdcard/Download/veyra-notes-2.5.png"))
+            scrollTo(By.desc("Desafixar ${a.title}")).click()
+            val unpinned=awaitRecord{it.id==a.id && it.value("pinned")=="no"}
+            Assert.assertEquals(a.notes,unpinned.notes);Assert.assertTrue(unpinned.favorite)
+        }}finally{WorkspaceStore(context).use{store->listOf(a,z).forEach{store.trash(it.id)}}}
+    }
+
     @Test fun missingDeviceCredentialCannotUnlockFinancialData(){
         Assume.assumeFalse(context.getSystemService(KeyguardManager::class.java).isDeviceSecure)
         WorkspaceStore(context).use{it.preference("financeLock","Sim")}

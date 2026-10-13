@@ -3,6 +3,24 @@ package app.veyra.model
 import kotlin.test.*
 
 class OrganizerTest {
+    @Test fun quickTaskHonorsDatePriorityAndRejectsInvalidTitles() {
+        val today=java.time.LocalDate.of(2026,10,12)
+        val task=Organizer.quickTask("  Fazer revisão  ",today,"Alta")
+        assertEquals("Fazer revisão",task.title);assertEquals(today.toString(),task.date)
+        assertEquals("Alta",task.value("priority"));assertFalse(task.done)
+        assertEquals("",Organizer.quickTask("Sem prazo",null,"Média").date)
+        assertEquals("2026-10-13",Organizer.quickTask("Amanhã",today.plusDays(1),"Urgente").date)
+        assertFailsWith<IllegalArgumentException>{Organizer.quickTask("  ",today,"Alta")}
+        assertFailsWith<IllegalArgumentException>{Organizer.quickTask("x".repeat(201),today,"Alta")}
+    }
+    @Test fun pinningPreservesFullNoteAndExistingMetadata() {
+        val note=Item(type="note",title="Nota",notes="Corpo integral".repeat(100),favorite=true,fields=mapOf("url" to "https://example.com","attachment" to "local","pinned" to "Sim"))
+        val unpinned=Organizer.togglePinned(note)
+        assertFalse(Organizer.pinned(unpinned));assertEquals(note.notes,unpinned.notes)
+        assertEquals("local",unpinned.value("attachment"));assertTrue(unpinned.favorite)
+        assertTrue(Organizer.pinned(Organizer.togglePinned(unpinned)))
+        assertFailsWith<IllegalArgumentException>{Organizer.togglePinned(note.copy(deletedAt=1))}
+    }
     @Test fun deadlinesKeepUndatedAndCompletedTasksAfterActionableTasks() {
         val undated = Item(id = "none", type = "task", title = "Sem prazo", date = "")
         val urgent = undated.copy(id = "urgent", date = "2026-10-10", fields = mapOf("priority" to "Urgente"))

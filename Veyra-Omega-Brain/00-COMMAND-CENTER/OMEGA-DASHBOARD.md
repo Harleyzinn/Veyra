@@ -4,7 +4,7 @@ title: "Omega Dashboard"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:22+00:00"
-updated_at: "2026-10-13T00:41:46+00:00"
+updated_at: "2026-10-13T01:13:26+00:00"
 sources: ["omega:local-metadata", "git:HEAD"]
 generated_by: "omega-foundation"
 ---
@@ -17,22 +17,22 @@ generated_by: "omega-foundation"
 
 | Indicador | Estado real |
 |---|---|
-| Produto | Android 2.4.0 · Windows 4.1.0 |
-| Git local | main · 19164ee |
+| Produto | Android 2.5.0 · Windows 4.1.0 |
+| Git local | main · 86f16b5 |
 | Estado | Fase 1 local; próximas fases no roadmap |
 | Sincronização automática GitHub | Não implementada |
-| Último episódio registrado | Phase 1 Handoff · 2026-10-13T00:33:53+00:00 |
+| Último episódio registrado | Quick Task Date Fix · 2026-10-13T01:13:22+00:00 |
 | Próximo marco proposto | Fase 2 — memória/consolidação |
 
 ## Memory Health
 
 | Indicador | Estado real |
 |---|---|
-| Documentos indexados | 30 |
+| Documentos indexados | 33 |
 | Erros de indexação | 0 |
 | SQLite | ok |
-| Última indexação UTC | 2026-10-13T00:41:43+00:00 |
-| Último backup verificado | 20261013T004143-6da15fd7 |
+| Última indexação UTC | 2026-10-13T01:13:23+00:00 |
+| Último backup verificado | 20261013T011323-03173c66 |
 | Notas marcadas conflitantes / desatualizadas | 0 / 0 |
 | Busca textual | SQLite FTS5 |
 | Busca semântica / sincronização GitHub / agentes | Fases futuras |
@@ -53,11 +53,11 @@ Papéis documentados; nenhum executor autônomo conectado. Publicação, exclus�
 
 | Operação local recente | Resultado | Duração observada (ms) |
 |---|---|---|
-| cli.restore | ok | 1244.347 |
-| restore | ok | 1232.996 |
-| cli.backup | ok | 1129.986 |
-| backup | ok | 1118.305 |
-| index | ok | 286.208 |
+| restore | ok | 1355.461 |
+| backup | ok | 1161.785 |
+| index | ok | 289.756 |
+| search | ok | 1.421 |
+| index | ok | 585.343 |
 
 ## Navegação
 

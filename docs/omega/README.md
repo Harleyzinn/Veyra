@@ -57,6 +57,11 @@ registrada, não uma certificação automática de verdade. Recuperação não e
 texto das notas. Contexto MINIMAL/STANDARD/DEEP usa limites de caracteres;
 tokenização exata e avaliação de suficiência são próximas fases.
 
+Bootstrap, dashboard e saúde gerados são saídas derivadas e ficam fora da busca
+de conhecimento, evitando que um resumo se torne evidência de si mesmo. Use health
+para métricas operacionais. A matriz histórica do produto não substitui os guias
+e o estado atual do código.
+
 Segredos e dados pessoais não entram no Vault. A proteção por padrões de credenciais
 é limitada; não substitui revisão. Banco, auditoria e backups ficam em `.omega`
 e não são publicados pelo Git. Backups não são criptografados. Não compartilhar

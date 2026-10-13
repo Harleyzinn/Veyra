@@ -42,7 +42,7 @@ class FinanceReportsTest {
             expense("Dólar", today.toString(), "currency" to "USD"),
             ordinary.copy(id = "deleted", deletedAt = 1),
             expense("Cancelado", today.toString(), "status" to "cancelled"))
-        assertEquals(listOf(ordinary), FinanceReports.select(rows, today, today.plusDays(30), "BRL", ReportBasis.CASH).entries)
+        assertEquals(listOf(ordinary), FinanceReports.select(rows, today, today.plusDays(30), "BRL", ReportBasis.CASH, today=today).entries)
         assertFailsWith<IllegalArgumentException> { FinanceReports.select(rows, today, today.minusDays(1), "BRL") }
         assertFailsWith<IllegalArgumentException> { FinanceReports.select(rows, today, today.plusYears(11), "BRL") }
     }

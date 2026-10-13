@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -18,12 +19,22 @@ import java.time.LocalDate
 
 @Composable fun TasksStudio(items:List<Item>,vm:VeyraViewModel,open:(Item)->Unit,create:(String)->Unit){
     var order by remember{mutableStateOf(TaskOrder.PRIORITY)}
-    var filter by remember{mutableStateOf("Pendentes")};var priority by remember{mutableStateOf("Todas")};var query by remember{mutableStateOf("")};var quick by remember{mutableStateOf("")}
-    val today=LocalDate.now().toString();val tasks=items.filter{it.type=="task"};val data=Organizer.tasks(tasks.filter{(query.isBlank() || Workspace.matches(it,query)) && (priority=="Todas" || it.value("priority")==priority) && when(filter){"Hoje"->it.date==today && !it.done;"Atrasadas"->it.date.isNotBlank() && it.date<today && !it.done;"Concluídas"->it.done;"Todas"->true;else->!it.done}},order)
+    var filter by remember{mutableStateOf("Pendentes")};var priority by remember{mutableStateOf("Todas")};var query by remember{mutableStateOf("")};var quick by rememberSaveable{mutableStateOf("")}
+    var quickDay by rememberSaveable{mutableStateOf("Hoje")};var quickPriority by rememberSaveable{mutableStateOf("Média")}
+    val today=LocalDate.now().toString();val tasks=items.filter{it.type=="task" && it.deletedAt==0L};val data=Organizer.tasks(tasks.filter{(query.isBlank() || Workspace.matches(it,query)) && (priority=="Todas" || it.value("priority")==priority) && when(filter){"Hoje"->it.date==today && !it.done;"Atrasadas"->it.date.isNotBlank() && it.date<today && !it.done;"Concluídas"->it.done;"Todas"->true;else->!it.done}},order)
     LazyColumn(contentPadding=PaddingValues(start=22.dp,end=22.dp,top=10.dp,bottom=110.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
         item{PageHeading("PRODUTIVIDADE","Do plano à prática.","Organize, priorize e celebre cada passo.")}
         item{Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){MiniMetric("Pendentes",tasks.count{!it.done}.toString(),moduleIcon("task"),MaterialTheme.colorScheme.primary,Modifier.weight(1f));MiniMetric("Concluídas",tasks.count{it.done}.toString(),Icons.Default.DoneAll,MaterialTheme.colorScheme.secondary,Modifier.weight(1f))}}
-        item{StudioCard{Text("Tire da cabeça",style=MaterialTheme.typography.titleMedium);OutlinedTextField(quick,{quick=it},label={Text("O que você precisa fazer?")},modifier=Modifier.fillMaxWidth(),singleLine=true);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={vm.save(Item(type="task",title=quick.trim(),fields=mapOf("priority" to "Média","status" to "A fazer")));quick=""},enabled=quick.isNotBlank() && quick.trim().length<=200){Text("Adicionar hoje")};TextButton(onClick={create("task")}){Text("Mais opções")}}}}
+        item{StudioCard{
+            Text("Tire da cabeça",style=MaterialTheme.typography.titleMedium)
+            OutlinedTextField(quick,{quick=it},label={Text("O que você precisa fazer?")},modifier=Modifier.fillMaxWidth(),singleLine=true,enabled=!vm.busy)
+            Choice("Quando",listOf("Hoje","Amanhã","Sem prazo"),quickDay,{quickDay=it})
+            Choice("Prioridade da captura",listOf("Baixa","Média","Alta","Urgente"),quickPriority,{quickPriority=it})
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                Button(onClick={val submitted=quick;val day=when(quickDay){"Hoje"->LocalDate.now();"Amanhã"->LocalDate.now().plusDays(1);else->null};vm.save(Organizer.quickTask(submitted,day,quickPriority)){if(quick==submitted)quick=""}},enabled=!vm.busy && quick.isNotBlank() && quick.trim().length<=200){Text(if(quickDay=="Hoje")"Adicionar hoje"else if(quickDay=="Amanhã")"Adicionar amanhã"else"Adicionar sem prazo")}
+                TextButton(onClick={create("task")},enabled=!vm.busy){Text("Mais opções")}
+            }
+        }}
         item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("Pendentes","Hoje","Atrasadas","Concluídas","Todas").forEach{FilterChip(selected=filter==it,onClick={filter=it},label={Text(it)})}}}
         item{OutlinedTextField(query,{query=it},label={Text("Buscar tarefa")},leadingIcon={Icon(Icons.Default.Search,null)},modifier=Modifier.fillMaxWidth(),singleLine=true);Choice("Prioridade",listOf("Todas","Baixa","Média","Alta","Urgente"),priority,{priority=it});Choice("Ordenar tarefas",TaskOrder.entries.map{it.name},order.name,{order=TaskOrder.valueOf(it)}){TaskOrder.valueOf(it).label};Row{Text("${data.size} tarefas",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall);TextButton(onClick={query="";priority="Todas";filter="Pendentes";order=TaskOrder.PRIORITY}){Text("Limpar filtros")}}}
         if(data.isEmpty())item{EmptyCard("Tudo em ordem por aqui","Adicione uma tarefa ou escolha outro filtro.")}
@@ -43,8 +54,12 @@ import java.time.LocalDate
         if(archived && area=="note")item{Text("Arquivo de notas",color=MaterialTheme.colorScheme.primary)}
         if(notes.isEmpty())item{EmptyCard("Uma página em branco","Guarde ideias, listas, histórias ou aquele link que vale revisitar.")}
         items(notes,key={it.id}){note->Card(onClick={open(note)},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-            Row(verticalAlignment=Alignment.CenterVertically){IconBadge(moduleIcon(note.type),size=32);Spacer(Modifier.width(12.dp));Text(dateLabel(note.date),Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant);IconButton(onClick={vm.save(note.copy(favorite=!note.favorite))},modifier=Modifier.size(32.dp)){Icon(if(note.favorite)Icons.Default.Star else Icons.Default.StarBorder,"Favoritar nota",tint=MaterialTheme.colorScheme.tertiary)}}
+            Row(verticalAlignment=Alignment.CenterVertically){IconBadge(moduleIcon(note.type),size=32);Spacer(Modifier.width(12.dp));Text(dateLabel(note.date),Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                IconButton(onClick={vm.toggleNoteFlag(note.id,true)},enabled=!vm.busy){Icon(Icons.Default.PushPin,if(Organizer.pinned(note))"Desafixar ${note.title}"else"Fixar ${note.title}",tint=if(Organizer.pinned(note))MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)}
+                IconButton(onClick={vm.toggleNoteFlag(note.id,false)},enabled=!vm.busy){Icon(if(note.favorite)Icons.Default.Star else Icons.Default.StarBorder,if(note.favorite)"Remover favorito ${note.title}"else"Favoritar ${note.title}",tint=MaterialTheme.colorScheme.tertiary)}
+            }
             Text(note.title,style=MaterialTheme.typography.titleLarge,maxLines=2,overflow=TextOverflow.Ellipsis)
+            if(Organizer.pinned(note))Text("Fixada no topo",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
             if(note.notes.isNotBlank())Text(note.notes,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=4,overflow=TextOverflow.Ellipsis)
             if(note.value("url").isNotBlank())Text(note.value("url"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary,maxLines=1,overflow=TextOverflow.Ellipsis)
             if(note.value("folder").isNotBlank() || note.tags.isNotBlank())Text(listOf(note.value("folder"),note.tags).filter{it.isNotBlank()}.joinToString(" · "),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)

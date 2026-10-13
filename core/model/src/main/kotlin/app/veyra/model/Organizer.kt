@@ -4,6 +4,16 @@ enum class TaskOrder(val label: String) { PRIORITY("Prioridade"), DEADLINE("Praz
 enum class NoteOrder(val label: String) { CREATED("Mais recentes"), TITLE("Título") }
 
 object Organizer {
+    fun quickTask(title: String, day: java.time.LocalDate?, priority: String): Item {
+        require(title.trim().length in 1..200) { "Use um título entre 1 e 200 caracteres" }
+        require(priority in setOf("Baixa", "Média", "Alta", "Urgente")) { "Prioridade inválida" }
+        return Item(type="task",title=title.trim(),date=day?.toString().orEmpty(),fields=mapOf("priority" to priority,"status" to "A fazer"))
+    }
+    fun pinned(item: Item) = item.value("pinned") in setOf("yes", "Sim")
+    fun togglePinned(item: Item): Item {
+        require(item.type in setOf("note", "journal", "link") && item.deletedAt==0L) { "Nota indisponível" }
+        return item.copy(fields=item.fields+("pinned" to if(pinned(item)) "no" else "yes"))
+    }
     private fun priority(item: Item) = when (item.value("priority")) { "Urgente" -> 0; "Alta" -> 1; "Média" -> 2; else -> 3 }
     fun tasks(items: List<Item>, order: TaskOrder): List<Item> {
         val rank = when (order) {
@@ -18,7 +28,7 @@ object Organizer {
             NoteOrder.CREATED -> compareByDescending<Item> { it.createdAt }
             NoteOrder.TITLE -> compareBy<Item> { it.title.lowercase(java.util.Locale.ROOT) }
         }
-        return items.filter { it.deletedAt == 0L }.sortedWith(compareByDescending<Item> { it.value("pinned") in setOf("yes", "Sim") }
+        return items.filter { it.deletedAt == 0L }.sortedWith(compareByDescending<Item> { pinned(it) }
             .thenByDescending { it.favorite }.then(rank).thenBy { it.id })
     }
 }
