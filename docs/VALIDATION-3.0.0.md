@@ -31,4 +31,4 @@ WebKit no Windows não substitui teste num iPhone físico. Não há IPA/App Stor
 
 Feriados móveis/locais são cadastrados manualmente; alertas e recebimentos automáticos novos rodam ao abrir o app. CSV importa receitas/despesas, enquanto JSON preserva vínculos completos e transferências. Testes de seletor de arquivo e biometria em cada fabricante/dispositivo permanecem pendentes. Recursos anteriores continuam no acesso legado.
 
-Publicação e URL de produção devem ser confirmadas no registro de publicação antes de declarar implantação bem-sucedida.
+Publicação externa concluída e verificada: workflow Pages aprovado, HTTP 200 e offline testados no endereço público em Edge/WebKit; release pública e APK baixado com hash idêntico. Evidências em [PUBLICATION-3.0.0.md](PUBLICATION-3.0.0.md).
