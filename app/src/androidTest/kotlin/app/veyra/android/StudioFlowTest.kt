@@ -34,7 +34,7 @@ class StudioFlowTest {
             Item(id="qa-note2",type="note",title="Coisas boas para lembrar",notes="Uma caminhada ao ar livre, uma conversa boa e um dia com espaço para respirar.",fields=mapOf("folder" to "Pessoal"))
         ))
     }}
-    @Test fun financePlanilhaAndBudgets(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun financePlanilhaAndBudgets(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         fun reveal(selector:BySelector):Boolean{
             repeat(10){if(device.wait(Until.hasObject(selector),1500))return true;device.swipe(device.displayWidth/2,device.displayHeight*3/4,device.displayWidth/2,device.displayHeight/3,25);device.waitForIdle()}
             return false
@@ -48,22 +48,22 @@ class StudioFlowTest {
         Assert.assertTrue(reveal(By.textContains("286,50")))
         Assert.assertTrue(reveal(By.textContains("513,50")))
     }}
-    @Test fun calendarShowsTasksAndKanbanStages(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun calendarShowsTasksAndKanbanStages(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));click("Agenda")
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Dê espaço aos planos.")),10000));screenshot("agenda")
         click("Kanban");Assert.assertTrue(device.wait(Until.hasObject(By.text("A fazer · 2")),10000));click("Começar →")
         WorkspaceStore(context).use{store->Assert.assertTrue(store.all().any{i->i.type=="task" && i.value("status")=="Fazendo"})}
     }}
-    @Test fun notesAndManualWeatherPersist(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun notesAndManualWeatherPersist(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));screenshot("inicio")
         click("Notas");Assert.assertTrue(device.wait(Until.hasObject(By.text("Ideias para meu próximo projeto")),10000));screenshot("notas")
         click("Hoje");screenshot("apos-voltar");click("Clima");screenshot("clima-apos-toque");Assert.assertTrue(device.wait(Until.hasObject(By.text("Meu clima")),10000));screenshot("clima")
         click("Salvar meu clima")
     }
         WorkspaceStore(context).use{Assert.assertEquals("Manual",it.preferences()["weatherMode"]);Assert.assertEquals("24",it.preferences()["weatherTemperature"])}
-        ActivityScenario.launch(MainActivity::class.java).use{Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));click("Hoje");click("Clima");Assert.assertTrue(device.wait(Until.hasObject(By.text("24°")),10000))}
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));click("Hoje");click("Clima");Assert.assertTrue(device.wait(Until.hasObject(By.text("24°")),10000))}
     }
-    @Test fun quickTaskCanBeCompleted(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun quickTaskCanBeCompleted(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.desc("Capturar")),30000));click("Tarefas")
         device.findObject(By.clazz("android.widget.EditText")).text="Tarefa rápida de teste"
         click("Adicionar hoje")

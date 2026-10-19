@@ -26,7 +26,7 @@ class NavigationUiTest {
     private fun beginning(){UiScrollable(UiSelector().scrollable(true)).setAsVerticalList().scrollToBeginning(20);settle()}
     @Test fun returningToPagesAndActivityRecreationKeepFiltersAndUnsavedTask(){
         WorkspaceStore(context).use{it.saveAll(taskFixtures)}
-        ActivityScenario.launch(MainActivity::class.java).use{scenario->
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{scenario->
             node(By.text("Tarefas")).click();node(By.text("Do plano à prática."))
             val quick=node(By.clazz("android.widget.EditText"));quick.click();quick.text="Rascunho contexto 28";hideKeyboard(scenario)
             UiScrollable(UiSelector().scrollable(true)).setAsVerticalList().scrollTextIntoView("Amanhã")
@@ -59,7 +59,7 @@ class NavigationUiTest {
         Assert.assertEquals(AppNavigation.destinations.size,AppNavigation.destinations.map{it.id}.toSet().size)
         Assert.assertEquals("notes",AppNavigation.resolve("note"))
         WorkspaceStore(context).use{s->Assert.assertTrue(s.syncablePreferences().containsKey("navHome"));Assert.assertFalse(s.syncablePreferences().containsKey("navUsage"));Assert.assertEquals("notes",org.json.JSONObject(s.exportJson()).getJSONObject("preferences").getString("navHome"))}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             node(By.text("Ideias merecem espaço."))
             node(By.text("Mais")).click();settle()
             Assert.assertTrue(device.hasObject(By.text("Ferramentas")))
@@ -71,13 +71,13 @@ class NavigationUiTest {
             WorkspaceStore(context).use{s->Assert.assertTrue(s.preferences()["favoriteModules"].orEmpty().split(',').contains("city"));Assert.assertEquals(fixture.notes,s.find(fixture.id)?.notes);Assert.assertTrue(s.preferences()["navRecent"].orEmpty().contains("worldclock"))}
             device.takeScreenshot(java.io.File("/sdcard/Download/veyra-navigation-2.7.png"))
         }
-        ActivityScenario.launch(MainActivity::class.java).use{node(By.text("Ideias merecem espaço."));WorkspaceStore(context).use{s->Assert.assertTrue(s.preferences()["favoriteModules"].orEmpty().contains("city"));Assert.assertEquals("notes",s.preferences()["navHome"]);Assert.assertEquals(fixture.notes,s.find(fixture.id)?.notes)}}
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{node(By.text("Ideias merecem espaço."));WorkspaceStore(context).use{s->Assert.assertTrue(s.preferences()["favoriteModules"].orEmpty().contains("city"));Assert.assertEquals("notes",s.preferences()["navHome"]);Assert.assertEquals(fixture.notes,s.find(fixture.id)?.notes)}}
     }
     @Test fun tabletUsesRailAndLightThemeWithoutLosingDestinations(){
         try{
             device.executeShellCommand("wm size 1280x800");device.executeShellCommand("wm density 160")
             WorkspaceStore(context).use{it.preference("theme","Claro")}
-            ActivityScenario.launch(MainActivity::class.java).use{
+            ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
                 node(By.text("Ideias merecem espaço."));node(By.text("Mais")).click();node(By.text("Tudo no lugar."))
                 node(By.text("Hoje"));node(By.text("Tarefas"));node(By.text("Finanças"));node(By.text("Notas"))
                 device.takeScreenshot(java.io.File("/sdcard/Download/veyra-navigation-tablet-2.7.png"))

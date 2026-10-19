@@ -11,6 +11,8 @@ try {
     if(-not (Test-Path $sdkRoot)) { throw 'Configure ANDROID_HOME com o caminho do Android SDK.' }
     $env:ANDROID_HOME=$sdkRoot
     if(-not $SkipBuild) {
+        & node apps/finance/build.mjs
+        if($LASTEXITCODE -ne 0) { throw 'O build da interface financeira falhou.' }
         & ./gradlew.bat :core:model:test :feature:finance:test :core:cloud:testDebugUnitTest :app:lintDebug :app:assembleRelease --console=plain
         if($LASTEXITCODE -ne 0) { throw 'Compilação ou validação falhou.' }
     }

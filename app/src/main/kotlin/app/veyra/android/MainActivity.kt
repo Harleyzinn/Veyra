@@ -6,6 +6,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -37,7 +38,14 @@ class MainActivity:FragmentActivity(){
             SideEffect{WindowCompat.getInsetsController(window,window.decorView).apply{isAppearanceLightStatusBars=lightBars;isAppearanceLightNavigationBars=lightBars}}
             if(!vm.loaded)Box(Modifier.fillMaxSize().padding(48.dp)){CircularProgressIndicator()}
             else if(vm.preferences["lock"].orEmpty().isNotBlank() && !unlocked) LockScreen(vm.preferences.getValue("lock"),{unlocked=true},::biometric)
-            else VeyraApp(vm,shared,image,if(accepted)entry.getStringExtra("type")else null,accepted && entry.getBooleanExtra("capture",false),if(accepted)entry.getStringExtra("item")else null,{if(android.os.Build.VERSION.SDK_INT>=33)permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)},openUpdates=accepted && entry.getBooleanExtra("updates",false),openFinance=accepted && entry.getBooleanExtra("finance",false),entryRevision=entryRevision)
+            else if(!entry.getBooleanExtra("legacy",false) && entry.action!=Intent.ACTION_SEND && !entry.getBooleanExtra("capture",false) && !entry.getBooleanExtra("updates",false) && entry.getStringExtra("item")==null && entry.getStringExtra("type")==null) {
+                var legacyOpen by remember { mutableStateOf(false) }
+                val legacyLauncher=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){
+                    vm.operation(onDone={legacyOpen=false}){}
+                }
+                if(legacyOpen) Column(Modifier.fillMaxSize().padding(32.dp)){CircularProgressIndicator();Text("Atualizando seu espaço…");if(vm.error!=null)Button(onClick={vm.operation(onDone={legacyOpen=false}){}}){Text("Tentar novamente")}}
+                else key(app.veyra.data.WorkspaceIdentity.activeUid(this)) { FinanceAccessGate(vm){ FinancePortal(vm){legacyOpen=true;legacyLauncher.launch(Intent(this,MainActivity::class.java).putExtra("legacy",true))} } }
+            } else VeyraApp(vm,shared,image,if(accepted)entry.getStringExtra("type")else null,accepted && entry.getBooleanExtra("capture",false),if(accepted)entry.getStringExtra("item")else null,{if(android.os.Build.VERSION.SDK_INT>=33)permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)},openUpdates=accepted && entry.getBooleanExtra("updates",false),openFinance=accepted && entry.getBooleanExtra("finance",false),entryRevision=entryRevision)
         }}
     }
 }

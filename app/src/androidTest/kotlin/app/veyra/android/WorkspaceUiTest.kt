@@ -9,7 +9,7 @@ class WorkspaceUiTest {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         WorkspaceStore(instrumentation.targetContext).use{it.preference("name","Teste");it.preference("lock","")}
         val device=UiDevice.getInstance(instrumentation)
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(instrumentation.targetContext,MainActivity::class.java).putExtra("legacy",true)).use{
             val capture=device.wait(Until.findObject(By.desc("Capturar")),30000)
             Assert.assertNotNull("Captura deve aparecer após carregar dados",capture)
             capture.click()

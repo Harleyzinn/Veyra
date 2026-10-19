@@ -14,7 +14,7 @@ class UtilityFlowTest {
     private fun module(label:String){click("Mais");device.wait(Until.findObject(By.clazz("android.widget.EditText")),10000).text=label;android.os.SystemClock.sleep(400);device.wait(Until.findObject(By.text(label).clazz("android.widget.TextView")),10000)?.click() ?: Assert.fail(label);android.os.SystemClock.sleep(500);device.waitForIdle()}
     @Before fun setup(){WorkspaceStore(context).use{store->store.preference("name","Ana");store.preference("lock","");store.preference("profile","Completo");store.preference("hidden","");store.preference("autoUpdateCheck","Não");store.preference("clockZones","America/Sao_Paulo|Asia/Tokyo")}}
     @After fun cleanup(){WorkspaceStore(context).use{store->store.all().filter{it.title=="Desenho QA" || it.title=="Resultado • Sortear opções"}.forEach{store.save(it.copy(deletedAt=System.currentTimeMillis()))};store.preference("autoUpdateCheck","Sim")}}
-    @Test fun drawingCanBeSavedAndReopened(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun drawingCanBeSavedAndReopened(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Desenho e esboços")
         device.wait(Until.findObject(By.clazz("android.widget.EditText")),10000).text="Desenho QA"
         hideKeyboard()
@@ -27,19 +27,19 @@ class UtilityFlowTest {
         click("Mais");module("Desenho e esboços");click("Galeria");click("Desenho QA")
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Editar")),10000))
     }}
-    @Test fun decisionsAreSavedAsNotes(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun decisionsAreSavedAsNotes(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Sorteios, equipes e dados")
         val fields=device.findObjects(By.clazz("android.widget.EditText"));fields[0].text="Ana\nBia";fields[1].text="2";hideKeyboard()
         click("Sortear");click("Guardar nas notas");android.os.SystemClock.sleep(700)
         WorkspaceStore(context).use{store->val note=store.all().first{it.title=="Resultado • Sortear opções" && it.deletedAt==0L};Assert.assertTrue(note.notes.contains("Ana") && note.notes.contains("Bia"))}
     }}
-    @Test fun ticTacToeRespondsToPlayerMove(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun ticTacToeRespondsToPlayerMove(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Jogos rápidos")
         device.wait(Until.findObject(By.desc("Casa 1, vazia")),10000).click()
         Assert.assertTrue(device.wait(Until.hasObject(By.desc("Casa 1, X")),10000));Assert.assertTrue(device.wait(Until.hasObject(By.desc("Casa 5, O")),10000))
         click("Nova partida");Assert.assertTrue(device.wait(Until.hasObject(By.desc("Casa 1, vazia")),10000))
     }}
-    @Test fun worldClockRemembersZones(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun worldClockRemembersZones(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Relógio mundial")
         click("America/Sao Paulo");click("Asia/Tokyo")
         WorkspaceStore(context).use{Assert.assertEquals("America/Sao_Paulo|Asia/Tokyo",it.preferences()["clockZones"])}

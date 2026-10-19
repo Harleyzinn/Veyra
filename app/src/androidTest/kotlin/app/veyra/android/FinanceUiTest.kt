@@ -39,7 +39,7 @@ class FinanceUiTest {
         val account=Item(id="privacy-account-$token",type="account",title="Banco sigiloso $token",favorite=true,fields=mapOf("openingMinor" to "12500","currency" to "BRL"))
         WorkspaceStore(context).use{store->store.saveAll(listOf(note,account));store.preference("home","favorites");store.preference("financeLock","Sim")}
         try{
-            ActivityScenario.launch(MainActivity::class.java).use{
+            ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
                 Assert.assertTrue(device.wait(Until.hasObject(By.text(note.title)),30_000))
                 Assert.assertFalse(device.hasObject(By.text(account.title)))
                 val tabs=device.findObjects(By.text("Finanças"));Assert.assertTrue(tabs.isNotEmpty());tabs.last().click()
@@ -101,7 +101,7 @@ class FinanceUiTest {
     }
 
     @Test fun quickExpenseStoresExactMinorUnitsAndPaidStatus(){
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();text(By.text("− Gasto")).click()
             text(By.text("Novo gasto"))
             val fields=device.findObjects(By.clazz("android.widget.EditText"))
@@ -121,7 +121,7 @@ class FinanceUiTest {
     @Test fun accountOpeningBalanceEditPersistsExactly(){
         val account=FinancialDomain.normalize(Item(id="finance-ui-account-$token",type="account",title="Conta UI $token",fields=mapOf("opening" to "10.00","currency" to "BRL")))
         WorkspaceStore(context).use{it.save(account)}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();financeSection("Contas")
             scrollTo(By.text("Conta UI $token"));scrollTo(By.text("Editar")).click()
             text(By.text("Conta ou carteira"))
@@ -140,7 +140,7 @@ class FinanceUiTest {
         val card=FinancialDomain.normalize(Item(id="partial-card-$token",type="card",title="Cartão parcial $token",fields=mapOf("closing" to "10","due" to "20","limitMinor" to "500000","account" to account.id,"currency" to "BRL")))
         val buy=FinancialDomain.normalize(Item(id="partial-buy-$token",type="expense",title="Compra parcial $token",date=today.toString(),fields=mapOf("amountMinor" to "10001","card" to card.id,"status" to "pending","currency" to "BRL","category" to "Compras")))
         WorkspaceStore(context).use{it.saveAll(listOf(account,card,buy))}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();financeSection("Cartões")
             repeat(3){
                 if(!device.hasObject(By.text("Registrar pagamento"))){
@@ -173,7 +173,7 @@ class FinanceUiTest {
         val account=FinancialDomain.normalize(Item(id="scenario-account-$token",type="account",title="Conta cenário $token",fields=mapOf("openingMinor" to "100000","currency" to "BRL")))
         WorkspaceStore(context).use{it.save(account)}
         val before=WorkspaceStore(context).use{exportWithoutNavigationUsage(it)}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();financeSection("Simulador")
             scrollTo(By.text("Entrada extra"))
             val fields=device.findObjects(By.clazz("android.widget.EditText"));Assert.assertTrue(fields.isNotEmpty())
@@ -195,7 +195,7 @@ class FinanceUiTest {
         val original=FinancialDomain.normalize(Item(id="review-a-$token",type="expense",title="Café conferência $token",fields=mapOf("amountMinor" to "1250","currency" to "BRL","status" to "paid")))
         val copy=original.copy(id="review-b-$token")
         WorkspaceStore(context).use{it.saveAll(listOf(original,copy))}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();financeSection("Conferência")
             scrollTo(By.text("Possível duplicidade · 2 registros"))
             device.takeScreenshot(java.io.File("/sdcard/Download/veyra-review-2.1.png"))
@@ -204,7 +204,7 @@ class FinanceUiTest {
     }
 
     @Test fun emptyDashboardHasNoSampleTransactions(){
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();scrollTo(By.textContains("Não há exemplos misturados"))
             Assert.assertTrue(device.hasObject(By.textContains("Não há exemplos misturados")))
             WorkspaceStore(context).use{store->Assert.assertTrue(store.all().none{it.type in FinancialDomain.transactionTypes && it.deletedAt==0L})}
@@ -219,7 +219,7 @@ class FinanceUiTest {
             val rows=store.financeWindow(today.withDayOfMonth(1),today.withDayOfMonth(today.lengthOfMonth()))
             Assert.assertEquals(1,app.veyra.feature.finance.FinanceReports.select(rows,today.withDayOfMonth(1),today.withDayOfMonth(today.lengthOfMonth()),"BRL",app.veyra.feature.finance.ReportBasis.CASH).entries.size)
         }
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();financeSection("Relatórios")
             scrollTo(By.text("Analisar: Gastos registrados")).click();text(By.text("Fluxo de caixa")).click()
             text(By.text("Analisar: Fluxo de caixa"))
@@ -254,7 +254,7 @@ class FinanceUiTest {
         val payment=FinancialDomain.normalize(Item(id="agenda-pay23-$token",type="expense",title="Parcela paga",date=today.toString(),fields=mapOf("amountMinor" to "10000","card" to card.id,"currency" to "BRL","invoiceId" to "invoice:${card.id}:$due","paymentType" to "card_payment","status" to "paid")))
         val foreign=FinancialDomain.normalize(Item(id="agenda-usd23-$token",type="expense",title="Dólar não misturado $token",date=today.minusDays(1).toString(),fields=mapOf("amountMinor" to "9900","currency" to "USD","status" to "pending")))
         WorkspaceStore(context).use{it.saveAll(listOf(card,purchase,payment,foreign))}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance();scrollTo(By.text("Vencimentos em foco"))
             scrollTo(By.textContains("1 pendência"));Assert.assertFalse(device.hasObject(By.text(foreign.title)))
             Assert.assertTrue(device.hasObject(By.textContains("200,00")))
@@ -267,7 +267,7 @@ class FinanceUiTest {
         val a=Item(id="notes23-a-$token",type="note",title="Alfa $token",createdAt=1)
         val z=a.copy(id="notes23-z-$token",title="Zeta $token",createdAt=2)
         WorkspaceStore(context).use{it.saveAll(listOf(a,z))}
-        try{ActivityScenario.launch(MainActivity::class.java).use{
+        try{ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             val tabs=device.wait(Until.findObjects(By.text("Notas")),30_000)
             tabs.maxBy{it.visibleBounds.centerY()}.click()
             text(By.clazz("android.widget.EditText")).text=token;hideKeyboard()
@@ -283,7 +283,7 @@ class FinanceUiTest {
         val expense=FinancialDomain.normalize(Item(id="chart-expense-$token",type="expense",title="Gasto gráfico",date=today,fields=mapOf("amountMinor" to "10001","currency" to "BRL","status" to "paid","category" to "Casa")))
         val other=expense.copy(id="chart-other-$token",fields=expense.fields+mapOf("amountMinor" to "20000","amount" to "200.00","category" to "Transporte"))
         WorkspaceStore(context).use{it.saveAll(listOf(income,expense,other))}
-        ActivityScenario.launch(MainActivity::class.java).use{scenario->
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{scenario->
             goFinance();financeSection("Relatórios")
             scrollTo(By.text("Visualização: Barras"))
             scrollTo(By.descContains("Gráfico de barras"))
@@ -317,7 +317,7 @@ class FinanceUiTest {
 
     @Test fun quickTasksSaveTodayTomorrowAndPriorityThenClearDraft(){
         val titles=listOf("Hoje $token","Amanhã $token")
-        try{ActivityScenario.launch(MainActivity::class.java).use{
+        try{ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             text(By.text("Tarefas")).click()
             val field=text(By.clazz("android.widget.EditText"));field.text=titles[0];hideKeyboard()
             scrollTo(By.text("Adicionar hoje")).click()
@@ -340,7 +340,7 @@ class FinanceUiTest {
     @Test fun rejectedSaveNeverCallsSuccessCallback(){
         val called=java.util.concurrent.atomic.AtomicBoolean(false)
         val failed=java.util.concurrent.atomic.AtomicBoolean(false)
-        ActivityScenario.launch(MainActivity::class.java).use{scenario->
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{scenario->
             scenario.onActivity{androidx.lifecycle.ViewModelProvider(it)[VeyraViewModel::class.java].save(Item(type="task",title="")){called.set(true)}}
             val deadline=SystemClock.elapsedRealtime()+10_000
             while(!failed.get() && SystemClock.elapsedRealtime()<deadline){scenario.onActivity{failed.set(androidx.lifecycle.ViewModelProvider(it)[VeyraViewModel::class.java].error!=null)};SystemClock.sleep(100)}
@@ -352,7 +352,7 @@ class FinanceUiTest {
         val a=Item(id="pin-a-$token",type="note",title="Alfa $token",notes="Texto integral com contexto. ".repeat(100),createdAt=1,fields=mapOf("url" to "https://example.com","folder" to "Teste"))
         val z=a.copy(id="pin-z-$token",title="Zeta $token",createdAt=2)
         WorkspaceStore(context).use{it.saveAll(listOf(a,z))}
-        try{ActivityScenario.launch(MainActivity::class.java).use{
+        try{ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             device.wait(Until.findObjects(By.text("Notas")),30_000).maxBy{it.visibleBounds.centerY()}.click()
             text(By.clazz("android.widget.EditText")).text=token;hideKeyboard()
             scrollTo(By.desc("Fixar ${a.title}")).click()
@@ -371,7 +371,7 @@ class FinanceUiTest {
     @Test fun missingDeviceCredentialCannotUnlockFinancialData(){
         Assume.assumeFalse(context.getSystemService(KeyguardManager::class.java).isDeviceSecure)
         WorkspaceStore(context).use{it.preference("financeLock","Sim")}
-        ActivityScenario.launch(MainActivity::class.java).use{
+        ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             goFinance()
             Assert.assertNotNull(text(By.text("Seu financeiro está protegido")))
             Assert.assertTrue(text(By.text("Configurar bloqueio do aparelho")).isEnabled)
@@ -384,7 +384,7 @@ class FinanceUiTest {
         val a=Item(id="archive26-a-$token",type="note",title="Guardada $token",notes="Conteúdo preservado. ".repeat(150),favorite=true,fields=mapOf("pinned" to "yes","folder" to "Teste"))
         val b=a.copy(id="archive26-b-$token",title="Outra $token",favorite=false,fields=mapOf("folder" to "Teste"))
         WorkspaceStore(context).use{it.saveAll(listOf(a,b))}
-        try{ActivityScenario.launch(MainActivity::class.java).use{
+        try{ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             device.wait(Until.findObjects(By.text("Notas")),30_000).maxBy{it.visibleBounds.centerY()}.click()
             text(By.clazz("android.widget.EditText")).text=token;hideKeyboard()
             scrollTo(By.text("Favoritas")).click();scrollTo(By.text(a.title))

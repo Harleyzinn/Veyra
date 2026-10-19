@@ -1,88 +1,42 @@
-# Veyra Life
+# Veyra Finanças
 
-Sua vida, em um só lugar. Android nativo em Kotlin/Jetpack Compose e aplicativo Windows integrado ao mesmo Firebase e à mesma conta Google.
+Seu dinheiro, com clareza. Receitas, gastos, contas, cartões, planejamento e economia em uma experiência para Android e web instalável no iPhone.
 
-## Omega Brain
+- [Abrir o web-app](https://harleyzinn.github.io/Veyra/)
+- [Baixar o APK Android](https://github.com/Harleyzinn/Veyra/releases/tag/v3.0.0)
+- [Funcionalidades, arquitetura, instalação e limitações](docs/FINANCE-3.0.md)
+- [Validação da versão 3.0](docs/VALIDATION-3.0.0.md)
 
-Fundação operacional local em `Veyra-Omega-Brain`: notas com proveniência, SQLite/FTS5, contexto seletivo, dashboard, auditoria e backup/restauração. [Instalação e operação](docs/omega/README.md) · [Descoberta](docs/omega/DISCOVERY.md) · [Testes executados e limites](docs/omega/VALIDATION.md). Busca semântica, sincronização incremental do GitHub e ponte de IA são fases seguintes.
+## No celular e no computador
 
-## Windows + celular
+Android 8+: APK com pacote `app.veyra.life` e a chave original, para atualizar sem reinstalar. Faça backup antes da atualização. A nova experiência usa o banco existente. Configurações → Abrir experiência anterior e conta mantém login, sincronização, tarefas, notas e os módulos anteriores.
 
-Baixe o [instalador Veyra Life Desktop 4.1.0](https://github.com/Harleyzinn/Veyra/releases/tag/desktop-v4.1.0) e o [APK Android 2.4.0](https://github.com/Harleyzinn/Veyra/releases/tag/v2.4.0). Central personalizável, financeiro completo, tarefas/Kanban, notas Markdown, calendário, hábitos, foco, captura global, bandeja e widgets. Cache desktop criptografado e fila offline com conflitos preservados. [Instalação, uso e desenvolvimento](docs/DESKTOP.md) · [Arquitetura desktop](docs/DESKTOP-ARCHITECTURE.md) · [Glass Panels](docs/DESKTOP-GLASS.md) · [Validação 4.1.0](docs/VALIDATION-DESKTOP-4.1.0.md).
+No iPhone, abra o web-app no Safari e use Compartilhar → Adicionar à Tela de Início. No computador e Android, use o navegador ou instale a PWA quando o navegador oferecer essa opção. A PWA funciona offline após o primeiro carregamento; seus dados ficam no navegador, com backup JSON e CSV. Esta entrega não inclui aplicativo iOS nativo nem sincronização Firebase no web-app.
 
-O Android 2.2 recebe mudanças remotas automaticamente enquanto o app está ativo e registra presença dos dispositivos. Nenhum módulo ou banco Android foi reorganizado. O instalador Windows não tem certificado Authenticode comercial; o atualizador usa assinatura Ed25519 e SHA-256.
+## O que há de novo
 
-## Evolução desktop 4.0
+Início financeiro, indicador explicável “Você pode gastar”, modos simples/completo, receitas por dia útil com calendário configurável, confirmações sem duplicar saldo, transferências, faturas, parcelas, metas, orçamentos, relatórios acessíveis e 24 temas completos com prévia e favoritos. Importações validam dados e mostram prévia antes de gravar.
 
-Home acionável, galeria de widgets, captura local revisável, Inbox, Spotlight, projetos integrados, planejador, backlinks/editor visual de notas, rascunhos protegidos, calendário financeiro, assinaturas/relatórios/CSV, automações, modelos e diagnóstico seguro. [Guia e limites](docs/PLATFORM-4.0.md) · [Matriz dos requisitos](docs/ROADMAP.md). O Android 2.4.0 inclui relatórios filtrados, fluxo de caixa por pagamento, vencimentos e ordenação de tarefas/notas; os dois compartilham os mesmos dados Firebase.
+Feriados estaduais, municipais e móveis são manuais. Registro automático de receitas e novos alertas são executados ao abrir o aplicativo. Preferências novas ficam salvas no usuário local e no backup; as regras de segurança Firebase não foram alteradas. Nenhuma conexão bancária é necessária.
 
-## APK e instalação
+## Desenvolvimento
 
-Em revisão local: Android 2.8.0 e Windows 4.2.0. O Android mantém filtros e rascunhos
-de tarefa ao trocar de página, com Voltar seguindo o histórico real. Inclui a navegação
-por áreas e personalização da 2.7. [Mudanças Android](docs/RELEASE-2.8.0.md) ·
-[Navegação e arquitetura](docs/NAVIGATION.md) · [Testes Android](docs/VALIDATION-2.8.0.md) ·
-[Testes da reestruturação](docs/VALIDATION-NAVIGATION.md) ·
-[Revisão de pendências](docs/AUDIT-2026-10-12.md).
-O download público abaixo permanece na última versão publicada.
-
-Baixe pela [release oficial](https://github.com/Harleyzinn/Veyra/releases/latest). O novo APK assinado local fica em `dist/Veyra-2.8.0.apk`; o instalador Windows em `apps/desktop/release/VeyraLife-Setup-4.2.0.exe`. O APK requer Android 8.0 ou superior e usa o pacote `app.veyra.life`. A assinatura original foi preservada para permitir atualizar versões anteriores sem reinstalar. Faça backup antes de atualizar. Veja [como instalar e usar](docs/INSTALAR.md).
-
-## Novidades da versão 2.4
-
-Gráficos da seleção em barras, linhas, área, rosca, pizza e tabela; agrupamento diário, semanal ou mensal; distribuição por categoria, conta ou cartão. Respeitam o período, filtros, moeda e privacidade do relatório. [Detalhes](docs/RELEASE-2.4.0.md).
-
-## Novidades da versão 2.1
-
-Pagamento parcial de faturas com data e histórico, simulador de caixa com reserva mínima e margem diária adicional, e conferência de possíveis duplicidades e registros sem categoria. Cálculos exatos, privacidade e dados existentes preservados. Veja [detalhes](docs/RELEASE-2.1.0.md) e [guia financeiro](docs/FINANCE-GUIDE.md).
-
-## Novidades da versão 2.0
-
-Central financeira com captura rápida e modo avançado, dinheiro em unidades mínimas exatas, saldo realizado separado da previsão, recorrências com exceções e escopos de edição, faturas por fechamento, parcelas, transferências, contas a pagar/receber, orçamentos, metas, reserva, quitação de dívidas, patrimônio, relatórios CSV/PDF, gráficos interativos, histórico e lixeira. Os demais módulos permanecem disponíveis.
-
-Na versão 2.0.1, Firebase Auth por e-mail e Google e Firestore estão conectados ao projeto real do Veyra. Plano gratuito sem cobrança, regras privadas implantadas e App Check registrado. Registros sincronizam com fila offline e conflitos; anexos permanecem no aparelho original. A configuração administrativa e os testes no Firebase real foram concluídos; Google Login e Play Integrity ainda precisam de validação no celular. Leia o [setup](docs/FIREBASE-SETUP.md), [detalhes da atualização](docs/RELEASE-2.0.1.md), [guia financeiro](docs/FINANCE-GUIDE.md) e [validação](docs/VALIDATION-2.0.1.md).
-
-## Novidades da versão 1.2
-
-Atualizador via GitHub com download automático em rede sem cobrança por uso, validação de assinatura/hash e confirmação pelo Android. Desenho e galeria PNG, leitor de códigos em imagens, sorteios/equipes/dados, três jogos offline e relógio mundial. Veja [detalhes](docs/RELEASE-1.2.md) e [Play Protect](docs/PLAY-PROTECT.md).
-
-## Novidades da versão 1.1
-
-18 novos módulos de registros e uma central de rotina: checklists, cardápio, casa, pets, medicamentos, consultas, humor, medidas, exercícios, metas financeiras, dívidas, contas a pagar, desejos, presentes, cursos, vagas, contagem regressiva e revisão de serviços. Veja [detalhes e limites](docs/RELEASE-1.1.md).
-
-## O que está no app
-
-- Dashboard com tarefas interativas, finanças, clima, hábitos, água e foco.
-- Tarefas com prioridade, etapas, prazo, recorrência, lembrete e vínculos; calendário e Kanban.
-- Finanças com captura simples e avançada, saldo atual e previsto, contas e carteiras, transferências, faturas e parcelas, regras recorrentes, orçamentos, metas, dívidas, patrimônio, fechamento mensal, alertas, gráficos, filtros e CSV com metadados de pagamento. Importação CSV/OFX, OCR local, comprovantes e PDF.
-- Notas com pastas, tags, arquivo, favoritos, salvamento automático e prévia Markdown; diário e links.
-- Clima por várias cidades, previsão horária/7 dias e cache. Modo manual de temperatura/condição para personalização.
-- Hábitos, água, sono, saúde, treinos, Pomodoro, estudos e flashcards.
-- Viagens, reservas, mala, compras, despensa, receitas, patrimônio, documentos, contatos, aniversários e veículo.
-- Calculadora, conversores, juros compostos, cronômetro, datas, texto, senhas e QR.
-- Busca global, favoritos, lixeira, desfazer, widget, atalhos, notificações, backup JSON e bloqueio PIN/biometria.
-- Temas claro/escuro/AMOLED/sistema/dinâmico, fonte Manrope embarcada e identidade violeta/grafite.
-
-Os registros começam vazios no APK. Exemplos dos testes e capturas não entram na instalação. Não há conexão bancária, câmbio automático ou cotação de investimentos; valores são informados pelo usuário. O APK 2.0.1 já inclui a configuração Firebase real; builds do código-fonte precisam do arquivo local ignorado pelo Git. As limitações de autenticação, App Check e distribuição estão no guia de setup.
-
-## Compilar
-
-JDK 17, SDK 35 e Build Tools 35.0.0. Configure `JAVA_HOME` e `ANDROID_HOME`, ou `local.properties` para o SDK.
+Node 24; JDK 17 e Android SDK 35 para APK. Dependências fixadas no projeto existente:
 
 ```powershell
-./gradlew.bat :core:model:test :feature:finance:test :app:lintDebug :app:assembleDebug
-./gradlew.bat :core:cloud:testDebugUnitTest
-./gradlew.bat :core:data:connectedDebugAndroidTest :app:connectedDebugAndroidTest
-./scripts/test-firebase-security.ps1
+npm ci --prefix apps/desktop
+node apps/finance/build.mjs
+node apps/desktop/node_modules/typescript/bin/tsc -p apps/finance/tsconfig.json
+node apps/desktop/node_modules/tsx/dist/cli.mjs --test apps/finance/tests/domain.test.ts apps/desktop/tests/finance.test.ts
 ./scripts/build-apk.ps1
-# Depois de commit e push, publicar o APK com a mesma chave:
-./scripts/publish-release.ps1
 ```
 
-O script gera a chave local na pasta privada e ignorada `.signing`, alinha o APK para páginas de 16 KB, assina e verifica o resultado. Preserve a chave e a senha para futuras atualizações. O projeto não inclui credenciais ou chaves no Git/ZIP.
+O build web gera os assets Android. GitHub Actions compila ambos; `finance-web.yml` publica apenas o shell da PWA no Pages. Banco, dados do usuário, senhas, configuração privada Firebase e assinaturas não são versionados.
 
-## Base e arquitetura
+## Continuidade e documentação anterior
 
-`app` contém Compose e integrações Android. `core:model` preserva os modelos; `core:data` gerencia Room, índice financeiro, busca FTS, auditoria, revisões, outbox e isolamento físico por UID. `feature:finance` contém os motores JVM de dinheiro, recorrências, cartões, previsões e indicadores. `core:cloud` contém autenticação, sincronização e anexos Firebase; `core:designsystem`, o tema. A [auditoria e migração](docs/FINANCE-ARCHITECTURE.md) explica as mudanças. A documentação anterior foi preservada em [BASE-README.md](docs/BASE-README.md).
+O [Omega Brain](docs/omega/README.md) mantém documentação operacional local, SQLite/FTS5 e handoffs com proveniência. Busca semântica e agentes autônomos não estão implementados.
 
-Clima: [Open-Meteo](https://open-meteo.com/), geocodificação GeoNames. Manrope: licença SIL Open Font License em [Manrope-OFL.txt](docs/Manrope-OFL.txt). Sem anúncios, analytics ou conta obrigatória. Dados locais e backups continuam sujeitos às condições descritas no guia.
+O aplicativo Windows 4.2 e os módulos anteriores permanecem no repositório. [Histórico 2.x e instruções anteriores](docs/README-2.x-HISTORY.md) · [Windows](docs/DESKTOP.md) · [Firebase](docs/FIREBASE-SETUP.md) · [Play Protect](docs/PLAY-PROTECT.md) · [Arquitetura financeira anterior](docs/FINANCE-ARCHITECTURE.md).
+
+Fonte Manrope embarcada, licença [SIL OFL](docs/Manrope-OFL.txt). Exemplos aparecem apenas nos testes e capturas de validação; a instalação nova começa sem transações fictícias.

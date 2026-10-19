@@ -1,0 +1,10 @@
+{
+  "name": "veyra-finance",
+  "version": "3.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "../desktop/node_modules/.bin/tsx --test tests/domain.test.ts"
+  },
+  "description": "Veyra Finanças: Android e PWA local-first para iPhone e web. O build reutiliza as dependências fixadas em apps/desktop/package-lock.json."
+}

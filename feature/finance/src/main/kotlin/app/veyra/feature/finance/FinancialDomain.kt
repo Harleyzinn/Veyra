@@ -17,7 +17,7 @@ enum class TransactionStatus(val label: String) {
 object FinancialDomain {
     val transactionTypes = setOf("income", "expense", "transfer")
     val financialTypes = transactionTypes + setOf("account", "card", "budget", "subscription",
-        "recurring_rule", "recurrence_exception", "installment_plan", "investment", "debt",
+        "recurring_rule", "salary_schedule", "recurrence_exception", "installment_plan", "investment", "debt",
         "savings_goal", "bill", "financial_category", "financial_rule", "financial_template",
         "cash_carry", "card_carry", "networth_snapshot", "month_close", "financial_asset")
     const val MAX_MINOR = 900_000_000_000_000L

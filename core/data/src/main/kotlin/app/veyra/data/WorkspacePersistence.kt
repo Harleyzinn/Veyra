@@ -7,7 +7,7 @@ import java.util.Locale
 internal val ledgerTypes = setOf("income", "expense", "transfer")
 internal val financeTypes = ledgerTypes + setOf(
     "account", "card", "budget", "subscription", "installment_plan", "investment", "debt",
-    "savings_goal", "bill", "receivable", "recurring_rule", "recurrence_exception", "financial_category", "financial_rule", "financial_asset",
+    "savings_goal", "bill", "receivable", "recurring_rule", "salary_schedule", "recurrence_exception", "financial_category", "financial_rule", "financial_asset",
     "financial_template", "category", "automation_rule", "financial_close", "asset", "loan", "finance_settings", "networth_snapshot", "month_close",
 )
 

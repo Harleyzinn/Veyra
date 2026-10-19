@@ -35,6 +35,7 @@ try {
     $notesPath=if(Test-Path "docs/RELEASE-$Version.md"){"docs/RELEASE-$Version.md"}else{"docs/RELEASE-$minor.md"}
     $body=if(Test-Path -LiteralPath $notesPath){[IO.File]::ReadAllText((Join-Path $projectRoot $notesPath))}else{"Veyra Life $Version"}
     $body=$body.Replace('(PLAY-PROTECT.md)',"(https://github.com/$repo/blob/$commit/docs/PLAY-PROTECT.md)")
+    $body=[regex]::Replace($body,'\]\((?!https?://)([A-Za-z0-9./_-]+\.md)\)',{param($m) "](https://github.com/$repo/blob/$commit/docs/$($m.Groups[1].Value))"})
     $body+="`n`n## Download e integridade`n`nBaixe **Veyra-$Version.apk** abaixo. Android 8.0 ou superior. APK release assinado com a chave original; faça backup antes de atualizar.`n`nSHA-256: ``$apkHash``.`n`nO ZIP contém o código-fonte. Chaves, senhas e dados de teste não estão incluídos."
     $validationVersion=if(Test-Path "docs/VALIDATION-$Version.md"){$Version}else{$minor}
     if(Test-Path 'docs/FIREBASE-SETUP.md'){$body+="`n`n[Configuração Firebase](https://github.com/$repo/blob/$commit/docs/FIREBASE-SETUP.md) · [Guia financeiro](https://github.com/$repo/blob/$commit/docs/FINANCE-GUIDE.md) · [Testes e migração](https://github.com/$repo/blob/$commit/docs/VALIDATION-$validationVersion.md)"}

@@ -21,6 +21,8 @@ apps/desktop/out/
 apps/desktop/release/
 apps/desktop/resources/firebase.json
 apps/desktop/resources/sql-wasm.wasm
+apps/finance/out/
+app/src/main/assets/finance/
 apps/desktop/.qa/
 *.tsbuildinfo
 .omega/

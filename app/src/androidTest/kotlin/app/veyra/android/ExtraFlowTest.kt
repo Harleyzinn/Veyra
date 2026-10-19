@@ -30,18 +30,18 @@ class ExtraFlowTest {
         ))
     }}
     @After fun cleanup(){WorkspaceStore(context).use{store->store.all().filter{it.id.startsWith("extra-") || it.id.contains("extra-")}.forEach{store.save(it.copy(deletedAt=System.currentTimeMillis()))}}}
-    @Test fun billPaymentPersistsOneExpense(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun billPaymentPersistsOneExpense(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Contas a pagar");click("Pagar e registrar despesa")
         device.wait(Until.gone(By.text("Pagar e registrar despesa")),10000)
         WorkspaceStore(context).use{store->val all=store.all();Assert.assertTrue(all.first{it.id=="extra-bill"}.done);Assert.assertEquals(1,all.count{it.id=="bill-payment:extra-bill" && it.deletedAt==0L});Assert.assertEquals(15000L,all.first{it.id=="bill-payment:extra-bill"}.cents())}
     }}
-    @Test fun mealIngredientsDoNotDuplicate(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun mealIngredientsDoNotDuplicate(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Cardápio semanal")
         repeat(6){if(device.hasObject(By.text("Adicionar ingredientes às compras")))return@repeat;device.swipe(500,1700,500,800,25);device.waitForIdle()}
         click("Adicionar ingredientes às compras");click("Adicionar ingredientes às compras")
         WorkspaceStore(context).use{store->Assert.assertEquals(2,store.all().count{it.id.startsWith("meal-shopping:extra-meal:") && it.deletedAt==0L})}
     }}
-    @Test fun goalAndCountdownShowCalculatedProgress(){ActivityScenario.launch(MainActivity::class.java).use{
+    @Test fun goalAndCountdownShowCalculatedProgress(){ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
         Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));module("Metas financeiras")
         repeat(5){if(device.hasObject(By.textContains("Faltam R$")))return@repeat;device.swipe(500,1700,500,800,25);device.waitForIdle()}
         Assert.assertTrue(device.hasObject(By.textContains("1.500")))

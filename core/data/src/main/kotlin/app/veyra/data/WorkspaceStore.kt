@@ -57,6 +57,12 @@ class WorkspaceStore(context:Context,val databaseName:String=WorkspaceIdentity.d
         items.forEach(::validate)
         db.runInTransaction { items.forEach{saveLocal(it)} }
     }
+    /** One transaction for the finance UI's records and scoped preferences. */
+    fun saveFinancePortal(items:List<Item>,preferences:String) {
+        require(items.map{it.id}.distinct().size==items.size && preferences.length<=100_000)
+        items.forEach(::validate)
+        db.runInTransaction {items.forEach{saveLocal(it)};db.workspace().preference(PreferenceRecord("financePortal",preferences))}
+    }
     private fun saveLocal(input:Item,force:Boolean=false) {
         val old=find(input.id)
         require(old==null || !isPurged(old) || input.deletedAt!=0L){"Este registro foi excluído definitivamente"}
@@ -350,8 +356,8 @@ class WorkspaceStore(context:Context,val databaseName:String=WorkspaceIdentity.d
         private fun placeholders(count:Int)=List(count){"?"}.joinToString(",")
         private fun searchContent(item:Item)=(listOf(item.title,item.notes,item.tags,item.type,item.date)+item.fields.filterKeys{it!="attachment"}.values).joinToString(" ").take(110_000)
         private val NAVIGATION_PREFERENCES=setOf("desktopNavigation","navOrder","navBottom","navHome","navCollapsed","navRecent","navUsage")
-        private val BACKUP_PREFERENCES=NAVIGATION_PREFERENCES+setOf("name","theme","profile","home","hidden","favoriteModules","focusMinutes","breakMinutes","weatherConsent","weatherMode","weatherCity","weatherTemperature","weatherCondition","aiEndpoint","aiModel","autoUpdateCheck","autoUpdateDownload","clockZones","autoBackup","financeCurrency","financeHideValues","financeHidden","financeFirstDay","financialDay","financeNotifications","financeBudgetAlerts","financeWidgetValues","widgetFinance","financeNotificationValues","financialMigrationVersion","financeRecentIncomeCategory","financeRecentExpenseCategory","financeRecentAccount","recentIncomeCategory","recentExpenseCategory","recentFinanceAccount")
-        val SYNC_PREFERENCES=BACKUP_PREFERENCES-setOf("navRecent","navUsage","financialMigrationVersion","autoBackup","autoUpdateCheck","autoUpdateDownload","weatherConsent","aiEndpoint","aiModel","financeWidgetValues","widgetFinance","financeNotificationValues")
+        private val BACKUP_PREFERENCES=NAVIGATION_PREFERENCES+setOf("financePortal","name","theme","profile","home","hidden","favoriteModules","focusMinutes","breakMinutes","weatherConsent","weatherMode","weatherCity","weatherTemperature","weatherCondition","aiEndpoint","aiModel","autoUpdateCheck","autoUpdateDownload","clockZones","autoBackup","financeCurrency","financeHideValues","financeHidden","financeFirstDay","financialDay","financeNotifications","financeBudgetAlerts","financeWidgetValues","widgetFinance","financeNotificationValues","financialMigrationVersion","financeRecentIncomeCategory","financeRecentExpenseCategory","financeRecentAccount","recentIncomeCategory","recentExpenseCategory","recentFinanceAccount")
+        val SYNC_PREFERENCES=BACKUP_PREFERENCES-setOf("financePortal","navRecent","navUsage","financialMigrationVersion","autoBackup","autoUpdateCheck","autoUpdateDownload","weatherConsent","aiEndpoint","aiModel","financeWidgetValues","widgetFinance","financeNotificationValues")
         fun itemWithoutBinary(item:Item):Item = if(item.value("attachment").isBlank())item else item.copy(fields=item.fields-"attachment"+mapOf("hasAttachment" to "yes"))
         private fun preserveBinaryWhenSameAttachment(local:Item?,remote:Item):Item {
             if(local==null || local.value("attachment").isBlank() || remote.value("attachment").isNotBlank())return remote

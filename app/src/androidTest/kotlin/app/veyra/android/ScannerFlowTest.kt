@@ -26,7 +26,7 @@ class ScannerFlowTest {
         val pixels=IntArray(600*600){n->if(matrix[n%600,n/600])android.graphics.Color.BLACK else android.graphics.Color.WHITE}
         val bitmap=android.graphics.Bitmap.createBitmap(pixels,600,600,android.graphics.Bitmap.Config.ARGB_8888)
         context.contentResolver.openOutputStream(uri)!!.use{bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
-        try{ActivityScenario.launch(MainActivity::class.java).use{
+        try{ActivityScenario.launch<MainActivity>(android.content.Intent(context,MainActivity::class.java).putExtra("legacy",true)).use{
             Assert.assertTrue(device.wait(Until.hasObject(By.text("Mais")),30000));device.findObject(By.text("Mais")).click();android.os.SystemClock.sleep(500)
             device.wait(Until.findObject(By.clazz("android.widget.EditText")),10000).text="Leitor de QR e códigos";android.os.SystemClock.sleep(500)
             device.wait(Until.findObject(By.text("Leitor de QR e códigos").clazz("android.widget.TextView")),10000).click();android.os.SystemClock.sleep(500)

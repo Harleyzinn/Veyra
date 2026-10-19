@@ -4,7 +4,7 @@ title: "Omega Dashboard"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:22+00:00"
-updated_at: "2026-10-13T18:55:58+00:00"
+updated_at: "2026-10-19T22:28:52+00:00"
 sources: ["omega:local-metadata", "git:HEAD"]
 generated_by: "omega-foundation"
 ---
@@ -17,21 +17,21 @@ generated_by: "omega-foundation"
 
 | Indicador | Estado real |
 |---|---|
-| Produto | Android 2.8.0 · Windows 4.2.0 |
-| Git local | main · 49c6cd0 |
+| Produto | Android 3.0.0 · Windows 4.2.0 |
+| Git local | main · 89be7e3 |
 | Estado | Fase 1 local; próximas fases no roadmap |
 | Sincronização automática GitHub | Não implementada |
-| Último episódio registrado | Context Continuity 2.8 2026-10-13 · 2026-10-13T18:55:53+00:00 |
+| Último episódio registrado | Veyra Finanças 3.0 — Android e PWA · 2026-10-19T22:28:19+00:00 |
 | Próximo marco proposto | Fase 2 — memória/consolidação |
 
 ## Memory Health
 
 | Indicador | Estado real |
 |---|---|
-| Documentos indexados | 37 |
+| Documentos indexados | 38 |
 | Erros de indexação | 0 |
 | SQLite | ok |
-| Última indexação UTC | 2026-10-13T18:55:54+00:00 |
+| Última indexação UTC | 2026-10-19T22:28:51+00:00 |
 | Último backup verificado | 20261013T185555-89aa2d92 |
 | Notas marcadas conflitantes / desatualizadas | 0 / 0 |
 | Busca textual | SQLite FTS5 |
@@ -53,11 +53,11 @@ Papéis documentados; nenhum executor autônomo conectado. Publicação, exclus�
 
 | Operação local recente | Resultado | Duração observada (ms) |
 |---|---|---|
-| restore | ok | 1884.101 |
-| backup | ok | 1437.934 |
-| index | ok | 374.047 |
-| search | ok | 3.397 |
-| index | ok | 642.815 |
+| cli.index | ok | 203.971 |
+| index | ok | 191.53 |
+| cli.seal | ok | 66.228 |
+| seal | ok | 52.544 |
+| cli.dashboard | ok | 318.65 |
 
 ## Navegação
 

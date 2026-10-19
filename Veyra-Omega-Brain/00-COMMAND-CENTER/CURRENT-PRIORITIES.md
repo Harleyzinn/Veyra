@@ -4,13 +4,15 @@ title: "Current Priorities"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T18:55:53+00:00"
-sources: ["user:melhore-mais-contexto:2026-10-13", "repo:docs/VALIDATION-2.8.0.md", "repo:docs/NAVIGATION.md"]
-expires_at: "2026-10-20T18:55:53+00:00"
+updated_at: "2026-10-19T22:28:50.7828186+00:00"
+sources: ["repo:docs/FINANCE-3.0.md", "repo:docs/VALIDATION-3.0.0.md", "repo:app/build.gradle.kts"]
+expires_at: "2026-10-26T22:28:50.8078436+00:00"
 ---
 
 # Continuidade
 
-Concluído na 2.8: estado de tarefas/notas/financeiro ao retornar, histórico Voltar, recuperação após recriação de atividade, mensagens de filtros vazios e Limpar filtros. Preservação por espaço usa a identidade existente do banco/proteção financeira. APK local testado.
+Concluir push autorizado da reformulação 3.0 e conferir workflow Pages, página HTTPS e release/APK públicos. Não considerar apenas o workflow criado como publicação bem-sucedida.
 
-Próximo: validar novos menus sincronizados em conta real e aparelho físico; avaliar contexto nos módulos secundários e Windows, além de rascunhos persistentes nos editores financeiros. Planejamento iOS e próximas fases Omega seguem pendentes. Nenhuma proposta autoriza publicação ou mudança de segurança. [[CONTEXT-CONTINUITY-2.8-2026-10-13]].
+Depois: validar Android físico e instalação no iPhone; conferir seletores de arquivo/biometria por fabricante; revalidar login/sincronização numa conta real; projetar compatibilidade das preferências novas e sincronização da PWA, sem enfraquecer regras existentes. Feriados locais/móveis e alertas em segundo plano continuam com os limites documentados.
+
+Preservar módulos antigos, dados e chave original. Documentar resultados reais da publicação no handoff. [[FINANCE-3.0-2026-10-19]] · fontes e evidências em docs/FINANCE-3.0.md e docs/VALIDATION-3.0.0.md.

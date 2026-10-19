@@ -125,6 +125,7 @@ export const financialTypes = new Set([
   "budget",
   "subscription",
   "recurring_rule",
+  "salary_schedule",
   "recurrence_exception",
   "installment_plan",
   "investment",

@@ -4,15 +4,17 @@ title: "Project Status"
 memory_type: "working"
 verification: "verified"
 created_at: "2026-10-13T00:29:21+00:00"
-updated_at: "2026-10-13T18:55:53+00:00"
-sources: ["repo:app/build.gradle.kts", "repo:apps/desktop/package.json", "repo:docs/VALIDATION-2.8.0.md", "repo:docs/RELEASE-2.8.0.md"]
-expires_at: "2026-10-20T18:55:53+00:00"
+updated_at: "2026-10-19T22:28:50.7828186+00:00"
+sources: ["repo:docs/FINANCE-3.0.md", "repo:docs/VALIDATION-3.0.0.md", "repo:app/build.gradle.kts"]
+expires_at: "2026-10-26T22:28:50.8078436+00:00"
 ---
 
-# Estado local
+# Estado local e publicação
 
-Android 2.8.0 (280): filtros e rascunho de tarefa preservados ao navegar; Voltar percorre histórico real, limitado a 20 destinos. Windows 4.2.0 sem alteração nesta sessão. Artefatos locais, sem publicação; últimas versões públicas registradas na memória permanecem Android 2.4.0/Windows 4.1.0, não reconferidas no GitHub.
+Android 3.0.0 (300) e PWA financeira compartilhada implementados e testados; APK assinado com a chave original e instalado por atualização no emulador. Dados e módulos anteriores preservados pelo acesso legado. Windows nativo continua 4.2.0; a experiência financeira nova também funciona no navegador do computador.
 
-158 testes de núcleo e seis testes de interface Android distintos aprovados após repetição dirigida do teste novo. APK final atualizado em Veyra_QA, versão e assinatura original conferidas. [[CONTEXT-CONTINUITY-2.8-2026-10-13]] · [[CURRENT-PRIORITIES]].
+36 testes JavaScript, 158 resultados de núcleo Android sem falhas (parcialmente em cache), seis instrumentados e 16 verificações de fluxo em cada um de Edge e WebKit. Lint zero erros/12 avisos. Capturas do emulador ficaram pretas inclusive no launcher; conteúdo do APK release confirmado pela árvore de acessibilidade, validação de pixels nativos pendente em outro ambiente/aparelho.
 
-Contexto de apresentação usa estado nativo Compose separado por identidade física do banco; não é backup após força de parada. Banco, Firebase e domínio financeiro sem alterações. Omega local/textual; embeddings e integrações autônomas pendentes.
+Pages habilitado para workflow. Código e APK prontos; publicação ainda aguarda push/deploy/release e confirmação externa. Consultar docs/VALIDATION-3.0.0.md e o próximo registro de publicação antes de afirmar que estão públicos.
+
+PWA local/IndexedDB, sem Firebase; iPhone por Safari/PWA, sem binário iOS. Preferências novas por UID no Android e backup, sem enviá-las ao whitelist incompatível do servidor. Omega local/FTS5, sem embeddings ou agentes executores. [[FINANCE-3.0-2026-10-19]] · [[CURRENT-PRIORITIES]].

@@ -231,5 +231,36 @@ class VeyraViewModel(app:Application):AndroidViewModel(app) {
     fun previewStatement(uri:Uri,ofx:Boolean)=operation{val text=read(uri,5_000_000).toString(Charsets.UTF_8);val parsed=if(ofx)Statement.ofx(text)else Statement.csv(text);val existing=store.all().map{it.id}.toSet();importPreview=parsed.distinctBy{it.id}.filter{it.id !in existing};message="${importPreview.size} lançamentos novos; duplicatas ignoradas"}
     fun confirmStatement()=operation{store.saveAll(importPreview);importPreview=emptyList();AndroidJobs.updateWidget(getApplication())}
     fun cancelStatement(){importPreview=emptyList()}
+    fun portalError(text:String){error=text}
+    fun financePortalCall(method:String,payload:String,reply:(String)->Unit){
+        val epoch=workspaceEpoch
+        viewModelScope.launch{mutex.withLock{
+            if(epoch!=workspaceEpoch){reply(JSONObject().put("error","A conta ativa mudou. Reabra o Veyra.").toString());return@withLock}
+            try{
+                val result=withContext(Dispatchers.IO){
+                    fun snapshot():JSONObject{
+                        val all=store.all();val localPreferences=store.preferences();val prefs=JSONObject(localPreferences["financePortal"]?.takeIf{it.isNotBlank()} ?: "{}")
+                        if(!prefs.has("hideValues") && (localPreferences["financeHidden"]=="Sim" || localPreferences["financeHideValues"]=="Sim"))prefs.put("hideValues","yes")
+                        val array=org.json.JSONArray();all.forEach{array.put(WorkspaceStore.toJson(it))}
+                        val digest=java.security.MessageDigest.getInstance("SHA-256").digest((array.toString()+prefs.toString()).toByteArray()).take(6).joinToString(""){"%02x".format(it)}.toLong(16)
+                        return JSONObject().put("version",1).put("revision",digest).put("items",array).put("preferences",prefs)
+                    }
+                    require(method in setOf("snapshot","save")){"Opção indisponível."}
+                    if(method=="save"){
+                        val request=JSONObject(payload);val current=snapshot()
+                        require(request.getLong("expectedRevision")==current.getLong("revision")){"Seus dados mudaram. Reabra a tela antes de continuar."}
+                        val input=request.getJSONArray("items");require(input.length()<=20_000)
+                        val changes=(0 until input.length()).map{WorkspaceStore.fromJson(input.getJSONObject(it))}.map{if(it.type in FinancialDomain.financialTypes)FinancialDomain.normalize(it)else it}
+                        val previous=store.all();val ids=changes.map{it.id}.toSet();val merged=previous.filter{it.id !in ids}+changes
+                        changes.forEach{FinancialDomain.validate(it,merged)}
+                        val preferences=request.getJSONObject("preferences");preferences.keys().forEach{key->require(key.length<=100 && preferences.get(key) is String && preferences.getString(key).length<=100_000)}
+                        store.saveFinancePortal(changes,preferences.toString())
+                    }
+                    snapshot().toString()
+                }
+                if(epoch==workspaceEpoch){reply(result);if(method=="save"){cloud.onLocalChanged();AndroidJobs.financeChanged(getApplication());AndroidJobs.updateWidget(getApplication())}}
+            }catch(e:CancellationException){throw e}catch(e:Exception){reply(JSONObject().put("error",e.message ?: "Não foi possível concluir. Tente novamente.").toString())}
+        }}
+    }
 }
 fun money(cents:Long)=java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("pt-BR")).format(BigDecimal.valueOf(cents,2))
